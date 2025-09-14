@@ -148,3 +148,13 @@ Thumbs.db
 test-*.js
 *-test.js
 *.test.js
+
+# Git credentials (security)
+.git-credentials
+
+# Backend utility/maintenance scripts (temporary)
+backend/check-problem-users.js
+backend/delete-all-products.js
+backend/delete-non-admin-users.js
+backend/fix-old-users.js
+backend/reset-sundiamr-password.js
