@@ -106,17 +106,17 @@ import { AuthService } from '../services/auth.service';
             </button>
           </form>
 
-          <!-- Demo Accounts -->
+          <!-- Account Info -->
           <div class="mt-6 pt-6 border-t border-gray-200">
-            <p class="text-center text-sm text-gray-600 mb-4">Demo Accounts:</p>
+            <p class="text-center text-sm text-gray-600 mb-4">Test Accounts:</p>
             <div class="space-y-2 text-xs">
-              <div class="flex justify-between bg-gray-50 p-2 rounded">
+              <div class="flex justify-between bg-blue-50 p-2 rounded">
                 <span>Admin: admin@tennis.com</span>
                 <span>Password: admin123</span>
               </div>
               <div class="flex justify-between bg-gray-50 p-2 rounded">
-                <span>User: user@tennis.com</span>
-                <span>Password: user123</span>
+                <span>User: sundiamr@aol.com</span>
+                <span>Password: admin123</span>
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@ export class LoginComponent implements OnInit {
       const { email, password } = this.loginForm.value;
       this.errorMessage.set('');
 
-      // Try real API first, fallback to mock
+      // Use real API only
       this.authService.login({ email, password }).subscribe({
         next: (response) => {
           if (response.token && response.user) {
@@ -188,24 +188,13 @@ export class LoginComponent implements OnInit {
         error: (error) => {
           if (error.status === 403 && error.error?.requiresApproval) {
             this.errorMessage.set(error.error.error || 'Your account is pending admin approval.');
+          } else if (error.status === 401) {
+            this.errorMessage.set('Invalid email or password. Please try again.');
+          } else if (error.status === 0) {
+            this.errorMessage.set('Unable to connect to server. Please ensure the backend is running.');
           } else {
-            console.warn('Real API failed, trying mock authentication:', error);
-            // Fallback to mock authentication
-            this.authService.mockLogin(email, password).subscribe({
-              next: (mockResponse) => {
-                if (mockResponse.token && mockResponse.user) {
-                  console.log('Mock login successful:', mockResponse.user);
-                  const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-                  this.router.navigate([returnUrl]);
-                } else {
-                  this.errorMessage.set(mockResponse.message || 'Login failed');
-                }
-              },
-              error: (mockError) => {
-                console.error('Both real and mock login failed:', mockError);
-                this.errorMessage.set('An error occurred. Please try again.');
-              }
-            });
+            console.error('Login failed:', error);
+            this.errorMessage.set(error.error?.error || 'An error occurred. Please try again.');
           }
         }
       });

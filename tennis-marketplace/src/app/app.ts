@@ -18,6 +18,7 @@ import { ModalComponent } from './components/modal.component';
 import { LowBalanceModalComponent } from './components/low-balance-modal.component';
 import { CoinPurchaseModalComponent } from './components/coin-purchase-modal.component';
 import { ReportModalComponent } from './components/report-modal.component';
+import { AnalyticsService } from './services/analytics.service';
 
 @Component({
   selector: 'app-root',
@@ -36,6 +37,7 @@ export class App implements OnInit, OnDestroy {
   private coinService = inject(CoinService);
   private themeService = inject(ThemeService);
   private pwaService = inject(PWAService);
+  private analyticsService = inject(AnalyticsService);
   private destroy$ = new Subject<void>();
   
   // Dynamic product data from API
@@ -62,6 +64,15 @@ export class App implements OnInit, OnDestroy {
       console.log('Route changed to:', event.url);
       this.isHomePage.set(this.isHomeRoute(event.url));
       console.log('Is home page:', this.isHomePage());
+      
+      // Track page view analytics
+      this.analyticsService.trackPageView(event.url, {
+        isHomePage: this.isHomeRoute(event.url),
+        isAuthenticated: this.authService.isAuthenticated(),
+        userRole: this.authService.currentUser()?.role
+      }).catch(error => {
+        console.error('Failed to track page view:', error);
+      });
     });
 
     // Set initial value
@@ -69,6 +80,16 @@ export class App implements OnInit, OnDestroy {
     console.log('Initial URL:', initialUrl);
     this.isHomePage.set(this.isHomeRoute(initialUrl));
     console.log('Initial is home page:', this.isHomePage());
+    
+    // Track initial page view
+    this.analyticsService.trackPageView(initialUrl, {
+      isHomePage: this.isHomeRoute(initialUrl),
+      isAuthenticated: this.authService.isAuthenticated(),
+      userRole: this.authService.currentUser()?.role,
+      isInitialLoad: true
+    }).catch(error => {
+      console.error('Failed to track initial page view:', error);
+    });
     
     // Load featured products for home page
     this.loadFeaturedProducts();

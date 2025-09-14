@@ -1,6 +1,7 @@
 import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AdminService, AdminProduct, AdminStats, CoinStats, UserCoinDetails, SuspiciousActivities } from '../services/admin.service';
@@ -33,10 +34,132 @@ export interface AdminUser {
   lastActive: string;
 }
 
+export interface UserActivityStats {
+  overview: {
+    totalPageViews: number;
+    uniqueVisitors: number;
+    totalSessions: number;
+    avgSessionDuration: number;
+  };
+  trends: Array<{
+    date: string;
+    pageViews: number;
+    uniqueVisitors: number;
+  }>;
+  devices: {
+    desktop: number;
+    mobile: number;
+    tablet: number;
+  };
+  popularProducts: Array<{
+    productId: string;
+    title: string;
+    views: number;
+  }>;
+  searchStats: Array<{
+    query: string;
+    count: number;
+  }>;
+  recentActivity: Array<{
+    eventType: string;
+    path: string;
+    user: { name: string; email: string } | null;
+    timestamp: string;
+    device: string;
+    browser: string;
+  }>;
+}
+
+export interface UserVisit {
+  _id: string;
+  username: string;
+  email: string;
+  userRole: string;
+  subscription?: {
+    plan: string;
+    remainingListings: number;
+    remainingBoosts: number;
+    expiresAt?: string;
+  };
+  isVerified: boolean;
+  firstVisit: string;
+  lastVisit: string;
+  totalPageViews: number;
+  sessionCount: number;
+  avgPagesPerSession: number;
+  uniquePathsCount: number;
+  eventTypes: string[];
+  devices: string[];
+  browsers: string[];
+}
+
+export interface UserVisitsData {
+  users: UserVisit[];
+  summary: {
+    totalRegisteredVisitors: number;
+    totalAnonymousVisitors: number;
+    totalVisitors: number;
+    dateRange: {
+      start: string;
+      end: string;
+    };
+  };
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    limit: number;
+  };
+}
+
+export interface AnonymousVisitor {
+  fingerprint: string;
+  firstVisit: string;
+  lastVisit: string;
+  totalPageViews: number;
+  sessionCount: number;
+  deviceCount: number;
+  uniquePathsCount: number;
+  uniqueIPs: number;
+  eventTypes: string[];
+  devices: string[];
+  browsers: string[];
+  paths: string[];
+  primaryDevice: string;
+  primaryBrowser: string;
+  avgPagesPerSession: number;
+}
+
+export interface AnonymousVisitsData {
+  visitors: AnonymousVisitor[];
+  summary: {
+    totalPageViews: number;
+    uniqueVisitors: number;
+    totalSessions: number;
+    uniqueIPs: number;
+    deviceBreakdown: string[];
+    browserBreakdown: string[];
+    dateRange: {
+      start: string;
+      end: string;
+    };
+  };
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    limit: number;
+  };
+}
+
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <!-- Modern Admin Header -->
@@ -1532,6 +1655,515 @@ export interface AdminUser {
               <div class="space-y-6">
                 <h3 class="text-lg font-semibold text-gray-900">Analytics & Reports</h3>
                 
+                <!-- User Activity Overview -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    User Activity Report
+                  </h4>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-blue-600">Total Page Views</p>
+                          <p class="text-2xl font-bold text-blue-900">{{ userActivityStats().overview.totalPageViews | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-green-600">Unique Visitors</p>
+                          <p class="text-2xl font-bold text-green-900">{{ userActivityStats().overview.uniqueVisitors | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-purple-600">Total Sessions</p>
+                          <p class="text-2xl font-bold text-purple-900">{{ userActivityStats().overview.totalSessions | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-orange-600">Avg Session (min)</p>
+                          <p class="text-2xl font-bold text-orange-900">{{ (userActivityStats().overview.avgSessionDuration / 60) | number:'1.0-1' }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Device Breakdown -->
+                  <div class="mb-6">
+                    <h5 class="text-md font-semibold text-gray-900 mb-3">Device Breakdown</h5>
+                    <div class="grid grid-cols-3 gap-4">
+                      <div class="text-center">
+                        <div class="text-2xl mb-2">🖥️</div>
+                        <p class="text-sm text-gray-600">Desktop</p>
+                        <p class="text-lg font-bold text-gray-900">{{ userActivityStats().devices.desktop | number }}</p>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-2xl mb-2">📱</div>
+                        <p class="text-sm text-gray-600">Mobile</p>
+                        <p class="text-lg font-bold text-gray-900">{{ userActivityStats().devices.mobile | number }}</p>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-2xl mb-2">📱</div>
+                        <p class="text-sm text-gray-600">Tablet</p>
+                        <p class="text-lg font-bold text-gray-900">{{ userActivityStats().devices.tablet | number }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Recent Activity -->
+                  <div>
+                    <h5 class="text-md font-semibold text-gray-900 mb-3">Recent Activity</h5>
+                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                      @for (activity of userActivityStats().recentActivity; track activity.timestamp) {
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div class="flex items-center space-x-3">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <div>
+                              <p class="text-sm font-medium text-gray-900">{{ activity.eventType.replace('_', ' ') | titlecase }}</p>
+                              <p class="text-xs text-gray-500">{{ activity.path }}</p>
+                              @if (activity.user) {
+                                <p class="text-xs text-blue-600">{{ activity.user.name }}</p>
+                              }
+                            </div>
+                          </div>
+                          <div class="text-right">
+                            <p class="text-xs text-gray-500">{{ formatTimeAgo(activity.timestamp) }}</p>
+                            <p class="text-xs text-gray-400">{{ activity.device }} • {{ activity.browser }}</p>
+                          </div>
+                        </div>
+                      } @empty {
+                        <div class="text-center py-8 text-gray-500">
+                          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                          </svg>
+                          <p>No recent activity data available</p>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- User Visits Report -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                      </svg>
+                      User Visits Report
+                    </h4>
+                    
+                    <!-- Filters -->
+                    <div class="flex items-center gap-3">
+                      <input 
+                        type="date" 
+                        [(ngModel)]="userVisitsFilters().startDate"
+                        (ngModelChange)="updateUserVisitsFilters('startDate', $event)"
+                        placeholder="Start Date"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                      <input 
+                        type="date" 
+                        [(ngModel)]="userVisitsFilters().endDate"
+                        (ngModelChange)="updateUserVisitsFilters('endDate', $event)"
+                        placeholder="End Date"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                      <select 
+                        [(ngModel)]="userVisitsFilters().sortBy"
+                        (ngModelChange)="updateUserVisitsFilters('sortBy', $event)"
+                        class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="lastVisit">Latest Visit</option>
+                        <option value="firstVisit">First Visit</option>
+                        <option value="visitCount">Most Active</option>
+                        <option value="username">Username A-Z</option>
+                      </select>
+                      <button 
+                        (click)="loadUserVisitsData()"
+                        class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Summary Stats -->
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-purple-600">Registered Visitors</p>
+                          <p class="text-2xl font-bold text-purple-900">{{ userVisitsData().summary.totalRegisteredVisitors | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-gray-600">Anonymous Visitors</p>
+                          <p class="text-2xl font-bold text-gray-900">{{ userVisitsData().summary.totalAnonymousVisitors | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-indigo-600">Total Visitors</p>
+                          <p class="text-2xl font-bold text-indigo-900">{{ userVisitsData().summary.totalVisitors | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- User Visits Table -->
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                      <thead class="bg-gray-50">
+                        <tr>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page Views</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sessions</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Pages/Session</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Visit</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Devices</th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-gray-200">
+                        @for (user of userVisitsData().users; track user._id) {
+                          <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                  <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center">
+                                    <span class="text-white font-semibold text-sm">{{ getUserInitials(user.username) }}</span>
+                                  </div>
+                                </div>
+                                <div class="ml-4">
+                                  <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                    {{ user.username }}
+                                    @if (user.isVerified) {
+                                      <span class="text-blue-500" title="Verified User">✓</span>
+                                    }
+                                  </div>
+                                  <div class="text-sm text-gray-500">{{ user.email }}</div>
+                                  <div class="text-xs text-purple-600 capitalize">{{ user.subscription?.plan || 'free' }} Plan</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <span [class]="getRoleClass(user.userRole)">
+                                {{ user.userRole | titlecase }}
+                              </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div class="flex items-center">
+                                <svg class="w-4 h-4 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                {{ user.totalPageViews | number }}
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div class="flex items-center">
+                                <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ user.sessionCount | number }}
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {{ user.avgPagesPerSession | number:'1.1-1' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {{ formatDate(user.firstVisit) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {{ formatTimeAgo(user.lastVisit) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <div class="flex flex-wrap gap-1">
+                                @for (device of user.devices; track device) {
+                                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    @if (device === 'mobile') { 📱 }
+                                    @else if (device === 'tablet') { 📱 }
+                                    @else { 🖥️ }
+                                    {{ device }}
+                                  </span>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="8" class="px-6 py-12 text-center">
+                              <div class="text-gray-500">
+                                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                <p>No user visits data available</p>
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <!-- Pagination -->
+                  @if (userVisitsData().pagination.totalPages > 1) {
+                    <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                      <div class="text-sm text-gray-700">
+                        Showing {{ ((userVisitsData().pagination.currentPage - 1) * userVisitsData().pagination.limit) + 1 }} 
+                        to {{ min(userVisitsData().pagination.currentPage * userVisitsData().pagination.limit, userVisitsData().pagination.totalItems) }} 
+                        of {{ userVisitsData().pagination.totalItems | number }} results
+                      </div>
+                      <div class="flex gap-2">
+                        <button 
+                          (click)="changeUserVisitsPage(userVisitsData().pagination.currentPage - 1)"
+                          [disabled]="!userVisitsData().pagination.hasPrev"
+                          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                          Previous
+                        </button>
+                        <span class="px-3 py-2 text-sm font-medium text-gray-900">
+                          Page {{ userVisitsData().pagination.currentPage }} of {{ userVisitsData().pagination.totalPages }}
+                        </span>
+                        <button 
+                          (click)="changeUserVisitsPage(userVisitsData().pagination.currentPage + 1)"
+                          [disabled]="!userVisitsData().pagination.hasNext"
+                          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+                
+                <!-- Anonymous Visitors Report -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Anonymous Visitors Report
+                    </h4>
+                    
+                    <!-- Filters -->
+                    <div class="flex items-center gap-3">
+                      <select 
+                        [(ngModel)]="anonymousVisitsFilters().sortBy"
+                        (ngModelChange)="updateAnonymousVisitsFilters('sortBy', $event)"
+                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                        <option value="lastVisit">Recent Activity</option>
+                        <option value="firstVisit">First Visit</option>
+                        <option value="visitCount">Most Active</option>
+                      </select>
+                      <button 
+                        (click)="loadAnonymousVisitsData()"
+                        class="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors">
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Summary Stats -->
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-orange-600">Unique Visitors</p>
+                          <p class="text-2xl font-bold text-orange-900">{{ anonymousVisitsData().summary.uniqueVisitors | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-blue-600">Page Views</p>
+                          <p class="text-2xl font-bold text-blue-900">{{ anonymousVisitsData().summary.totalPageViews | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-green-600">Sessions</p>
+                          <p class="text-2xl font-bold text-green-900">{{ anonymousVisitsData().summary.totalSessions | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <p class="text-sm font-medium text-purple-600">Unique IPs</p>
+                          <p class="text-2xl font-bold text-purple-900">{{ anonymousVisitsData().summary.uniqueIPs | number }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Anonymous Visitors Table -->
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                      <thead class="bg-gray-50">
+                        <tr>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitor ID</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page Views</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sessions</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Pages/Session</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Visit</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-gray-200">
+                        @for (visitor of anonymousVisitsData().visitors; track visitor.fingerprint) {
+                          <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                  <div class="h-10 w-10 rounded-full bg-gradient-to-r from-orange-400 to-red-400 flex items-center justify-center">
+                                    <span class="text-white font-semibold text-sm">👻</span>
+                                  </div>
+                                </div>
+                                <div class="ml-4">
+                                  <div class="text-sm font-medium text-gray-900">
+                                    {{ visitor.fingerprint.substring(0, 8) }}...
+                                  </div>
+                                  <div class="text-xs text-gray-500">{{ visitor.uniqueIPs }} IP(s)</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div class="flex items-center">
+                                <svg class="w-4 h-4 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                {{ visitor.totalPageViews | number }}
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div class="flex items-center">
+                                <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ visitor.sessionCount | number }}
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {{ visitor.avgPagesPerSession | number:'1.1-1' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {{ formatDate(visitor.firstVisit) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {{ formatTimeAgo(visitor.lastVisit) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <div class="flex flex-wrap gap-1">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  @if (visitor.primaryDevice === 'mobile') { 📱 }
+                                  @else if (visitor.primaryDevice === 'tablet') { 📱 }
+                                  @else { 🖥️ }
+                                  {{ visitor.primaryDevice }}
+                                </span>
+                                @if (visitor.primaryBrowser) {
+                                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ visitor.primaryBrowser }}
+                                  </span>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <!-- Pagination -->
+                  @if (anonymousVisitsData().pagination.totalPages > 1) {
+                    <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                      <div class="text-sm text-gray-700">
+                        Showing {{ ((anonymousVisitsData().pagination.currentPage - 1) * anonymousVisitsData().pagination.limit) + 1 }} 
+                        to {{ min(anonymousVisitsData().pagination.currentPage * anonymousVisitsData().pagination.limit, anonymousVisitsData().pagination.totalItems) }} 
+                        of {{ anonymousVisitsData().pagination.totalItems | number }} results
+                      </div>
+                      <div class="flex gap-2">
+                        <button 
+                          (click)="changeAnonymousVisitsPage(anonymousVisitsData().pagination.currentPage - 1)"
+                          [disabled]="!anonymousVisitsData().pagination.hasPrev"
+                          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                          Previous
+                        </button>
+                        <span class="px-3 py-2 text-sm font-medium text-gray-900">
+                          Page {{ anonymousVisitsData().pagination.currentPage }} of {{ anonymousVisitsData().pagination.totalPages }}
+                        </span>
+                        <button 
+                          (click)="changeAnonymousVisitsPage(anonymousVisitsData().pagination.currentPage + 1)"
+                          [disabled]="!anonymousVisitsData().pagination.hasNext"
+                          class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+                
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div class="bg-gray-50 rounded-lg p-6">
                     <h4 class="text-md font-semibold text-gray-900 mb-4">Subscription Distribution</h4>
@@ -1829,6 +2461,84 @@ export class AdminComponent implements OnInit {
     urgentReports: 0
   });
   selectedReport = signal<any | null>(null);
+  // User activity analytics data
+  userActivityStats = signal<UserActivityStats>({
+    overview: {
+      totalPageViews: 0,
+      uniqueVisitors: 0,
+      totalSessions: 0,
+      avgSessionDuration: 0
+    },
+    trends: [],
+    devices: {
+      desktop: 0,
+      mobile: 0,
+      tablet: 0
+    },
+    popularProducts: [],
+    searchStats: [],
+    recentActivity: []
+  });
+  // User visits data
+  userVisitsData = signal<UserVisitsData>({
+    users: [],
+    summary: {
+      totalRegisteredVisitors: 0,
+      totalAnonymousVisitors: 0,
+      totalVisitors: 0,
+      dateRange: {
+        start: '',
+        end: ''
+      }
+    },
+    pagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrev: false,
+      limit: 50
+    }
+  });
+  userVisitsFilters = signal<any>({
+    startDate: '',
+    endDate: '',
+    sortBy: 'lastVisit',
+    page: 1,
+    limit: 50
+  });
+
+  // Anonymous visitors data
+  anonymousVisitsData = signal<AnonymousVisitsData>({
+    visitors: [],
+    summary: {
+      totalPageViews: 0,
+      uniqueVisitors: 0,
+      totalSessions: 0,
+      uniqueIPs: 0,
+      deviceBreakdown: [],
+      browserBreakdown: [],
+      dateRange: {
+        start: '',
+        end: ''
+      }
+    },
+    pagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNext: false,
+      hasPrev: false,
+      limit: 50
+    }
+  });
+  anonymousVisitsFilters = signal<any>({
+    startDate: '',
+    endDate: '',
+    sortBy: 'lastVisit',
+    page: 1,
+    limit: 50
+  });
   reportFilters = signal<any>({
     status: 'all',
     type: 'all',
@@ -2060,6 +2770,12 @@ export class AdminComponent implements OnInit {
 
       this.loadingMessage.set('Loading coin data...');
       await this.loadCoinStats();
+      this.loadingMessage.set('Loading user activity analytics...');
+      await this.loadUserActivityStats();
+      this.loadingMessage.set('Loading user visits data...');
+      await this.loadUserVisitsData();
+      this.loadingMessage.set('Loading anonymous visitors data...');
+      await this.loadAnonymousVisitsData();
 
       this.loadingMessage.set('Loading verifications...');
       await this.loadVerificationData();
@@ -2725,7 +3441,7 @@ export class AdminComponent implements OnInit {
   // Report management methods
   async loadReports(): Promise<void> {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('tennis-marketplace-token');
       if (!token) return;
 
       const headers = new HttpHeaders({
@@ -2735,7 +3451,7 @@ export class AdminComponent implements OnInit {
 
       // Load all reports
       const reportsResponse = await firstValueFrom(
-        this.http.get<any>('/api/reports', { headers })
+        this.http.get<any>('http://localhost:5000/api/reports', { headers })
       );
 
       this.allReportsData.set(reportsResponse.reports || []);
@@ -2756,8 +3472,225 @@ export class AdminComponent implements OnInit {
     }
   }
 
+  async loadUserActivityStats(): Promise<void> {
+    try {
+      const token = localStorage.getItem('tennis-marketplace-token');
+      if (!token) return;
+      
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
+
+      // Fetch analytics stats and real-time data
+      const [statsResponse, realtimeResponse] = await Promise.all([
+        firstValueFrom(this.http.get<any>('http://localhost:5000/api/analytics/stats?excludeAdmin=true', { headers })),
+        firstValueFrom(this.http.get<any>('http://localhost:5000/api/analytics/realtime?excludeAdmin=true', { headers }))
+      ]);
+
+      if (statsResponse.success && realtimeResponse.success) {
+        const stats = statsResponse.data;
+        const realtime = realtimeResponse.data;
+
+        this.userActivityStats.set({
+          overview: {
+            totalPageViews: stats.overview.totalPageViews || 0,
+            uniqueVisitors: stats.overview.uniqueVisitors || 0,
+            totalSessions: stats.overview.totalSessions || 0,
+            avgSessionDuration: stats.overview.avgSessionDuration || 0
+          },
+          trends: stats.trends || [],
+          devices: {
+            desktop: stats.devices.desktop || 0,
+            mobile: stats.devices.mobile || 0,
+            tablet: stats.devices.tablet || 0
+          },
+          popularProducts: stats.popularProducts || [],
+          searchStats: stats.searchStats || [],
+          recentActivity: realtime.recentActivity || []
+        });
+
+        console.log('📈 Loaded user activity stats:', this.userActivityStats());
+      }
+    } catch (error) {
+      console.error('Error loading user activity stats:', error);
+    }
+  }
+
+  async loadUserVisitsData(): Promise<void> {
+    try {
+      const token = localStorage.getItem('tennis-marketplace-token');
+      if (!token) {
+        console.warn('No authentication token found for user visits data');
+        return;
+      }
+      
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
+
+      const filters = this.userVisitsFilters();
+      const params = new URLSearchParams({
+        excludeAdmin: 'true',
+        sortBy: filters.sortBy,
+        page: filters.page.toString(),
+        limit: filters.limit.toString()
+      });
+
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      console.log('🔗 Making request to:', `http://localhost:5000/api/analytics/user-visits?${params.toString()}`);
+      console.log('🎫 Using token:', token ? `${token.substring(0, 20)}...` : 'null');
+      
+      const response = await firstValueFrom(
+        this.http.get<any>(`http://localhost:5000/api/analytics/user-visits?${params.toString()}`, { headers })
+      );
+
+      console.log('📥 Raw response:', response);
+      
+      if (response.success) {
+        this.userVisitsData.set(response.data);
+        console.log('👥 Loaded user visits data:', response.data.summary);
+        console.log('👥 Number of users found:', response.data.users.length);
+      } else {
+        console.warn('❌ Response not successful:', response);
+      }
+    } catch (error: any) {
+      console.error('❌ Error loading user visits data:', error);
+      if (error?.status === 401) {
+        console.error('🔐 Authentication failed - check if admin is logged in');
+      } else if (error?.status === 0) {
+        console.error('🔗 Network error - check if backend is running');
+      }
+    }
+  }
+
+  async loadAnonymousVisitsData(): Promise<void> {
+    try {
+      const token = localStorage.getItem('tennis-marketplace-token');
+      if (!token) {
+        console.warn('No authentication token found for anonymous visits data');
+        return;
+      }
+      
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
+
+      const filters = this.anonymousVisitsFilters();
+      const params = new URLSearchParams({
+        sortBy: filters.sortBy,
+        page: filters.page.toString(),
+        limit: filters.limit.toString()
+      });
+
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      console.log('🔗 Making request to:', `http://localhost:5000/api/analytics/anonymous-visits?${params.toString()}`);
+      console.log('🎫 Using token:', token ? `${token.substring(0, 20)}...` : 'null');
+      
+      const response = await firstValueFrom(
+        this.http.get<any>(`http://localhost:5000/api/analytics/anonymous-visits?${params.toString()}`, { headers })
+      );
+
+      console.log('📥 Raw anonymous response:', response);
+      
+      if (response.success) {
+        this.anonymousVisitsData.set(response.data);
+        console.log('👻 Loaded anonymous visits data:', response.data.summary);
+        console.log('👻 Number of anonymous visitors found:', response.data.visitors.length);
+        console.log('👻 First few visitors:', response.data.visitors.slice(0, 3));
+        console.log('👻 Data structure check:', {
+          hasVisitors: Array.isArray(response.data.visitors),
+          visitorsLength: response.data.visitors.length,
+          firstVisitor: response.data.visitors[0]
+        });
+      } else {
+        console.warn('❌ Anonymous response not successful:', response);
+      }
+    } catch (error: any) {
+      console.error('❌ Error loading anonymous visits data:', error);
+      if (error?.status === 401) {
+        console.error('🔐 Authentication failed - check if admin is logged in');
+      } else if (error?.status === 0) {
+        console.error('🔗 Network error - check if backend is running');
+      }
+    }
+  }
+
   refreshReports(): void {
     this.loadReports();
+  }
+
+  // User visits management methods
+  updateUserVisitsFilters(field: string, value: any): void {
+    const currentFilters = this.userVisitsFilters();
+    currentFilters[field] = value;
+    if (field !== 'page') {
+      currentFilters.page = 1; // Reset to first page when filter changes
+    }
+    this.userVisitsFilters.set({ ...currentFilters });
+    this.loadUserVisitsData();
+  }
+
+  changeUserVisitsPage(page: number): void {
+    if (page < 1 || page > this.userVisitsData().pagination.totalPages) {
+      return;
+    }
+    this.updateUserVisitsFilters('page', page);
+  }
+
+  // Anonymous visits management methods
+  updateAnonymousVisitsFilters(field: string, value: any): void {
+    const currentFilters = this.anonymousVisitsFilters();
+    currentFilters[field] = value;
+    if (field !== 'page') {
+      currentFilters.page = 1; // Reset to first page when filter changes
+    }
+    this.anonymousVisitsFilters.set({ ...currentFilters });
+    this.loadAnonymousVisitsData();
+  }
+
+  changeAnonymousVisitsPage(page: number): void {
+    if (page < 1 || page > this.anonymousVisitsData().pagination.totalPages) {
+      return;
+    }
+    this.updateAnonymousVisitsFilters('page', page);
+  }
+
+  getRoleClass(role: string): string {
+    const classes = {
+      'admin': 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800',
+      'seller': 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800',
+      'buyer': 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800'
+    };
+    return classes[role as keyof typeof classes] || classes['buyer'];
+  }
+
+  formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  getUserInitials(username: string): string {
+    if (!username) return '??';
+    return username.split(' ')
+      .map(name => name && name.length > 0 ? name[0] : '')
+      .filter(initial => initial)
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  }
+
+  min(a: number, b: number): number {
+    return Math.min(a, b);
   }
 
   updateReportFilters(filterType: string, value: string): void {
@@ -2866,7 +3799,7 @@ Report Details:
     if (!reason) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('tennis-marketplace-token');
       if (!token) return;
 
       const headers = new HttpHeaders({
@@ -2881,7 +3814,7 @@ Report Details:
       };
 
       await firstValueFrom(
-        this.http.put(`/api/reports/${report._id}/resolve`, payload, { headers })
+        this.http.put(`http://localhost:5000/api/reports/${report._id}/resolve`, payload, { headers })
       );
 
       this.modalService.success('Report Resolved', 'Report has been marked as resolved.');
@@ -2909,7 +3842,7 @@ Report Details:
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('tennis-marketplace-token');
       if (!token) return;
 
       const headers = new HttpHeaders({
@@ -2942,7 +3875,7 @@ Report Details:
       };
 
       await firstValueFrom(
-        this.http.put(`/api/reports/${report._id}/resolve`, reportPayload, { headers })
+        this.http.put(`http://localhost:5000/api/reports/${report._id}/resolve`, reportPayload, { headers })
       );
 
       this.modalService.success('User Suspended', `User has been suspended for ${duration} hours and the report has been resolved.`);

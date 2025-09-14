@@ -109,9 +109,9 @@ export class AuthService {
       console.log('  - Length:', token.length);
     }
     
-    // Clear old non-mock tokens to force re-login with proper mock tokens
-    if (token && !token.startsWith('mock.') && !token.startsWith('eyJ')) {
-      console.log('🔄 Clearing old token format, forcing logout');
+    // Only accept real JWT tokens
+    if (token && !token.startsWith('eyJ')) {
+      console.log('🔄 Clearing invalid token format, forcing logout');
       console.trace('initializeAuth logout called from:');
       this.logout();
       return;
@@ -127,37 +127,10 @@ export class AuthService {
         },
         error: (error) => {
           console.log('❌ Failed to load user profile:', error);
-          console.log('🔄 Token exists but API call failed. This might be a network issue.');
+          console.log('🔄 Token exists but API call failed.');
           
-          // For mock tokens, don't force logout on API failure
-          if (token.startsWith('mock.')) {
-            console.log('🧪 Mock token detected, keeping user logged in despite API failure');
-            
-            // Try to restore user from token payload
-            try {
-              const parts = token.split('.');
-              if (parts.length === 3) {
-                const payload = JSON.parse(atob(parts[2]));
-                console.log('🔄 Restoring user from mock token payload:', payload);
-                
-                // Create a mock user object based on token
-                const mockUser: User = this.createMockUserFromPayload(payload);
-                this.currentUser.set(mockUser);
-                this.currentUserSubject.next(mockUser);
-                this.isAuthenticatedSignal.set(true);
-                console.log('✅ Mock user restored from token');
-                return;
-              }
-            } catch (tokenError) {
-              console.error('❌ Failed to parse mock token payload:', tokenError);
-            }
-            
-            // Don't logout for mock tokens - the backend might not be running
-            return;
-          }
-          
-          // Only logout for real JWT tokens that fail authentication
-          console.log('🔑 Real token failed authentication, logging out');
+          // Logout if token is invalid or expired
+          console.log('🔑 Token failed authentication, logging out');
           this.logout();
         }
       });
@@ -180,8 +153,8 @@ export class AuthService {
         }),
         catchError(error => {
           this.isLoading.set(false);
-          console.error('Real API login failed:', error);
-          throw error; // Let the component handle the error and fallback
+          console.error('Login failed:', error);
+          throw error; // No fallback to mock data
         })
       );
   }
@@ -249,10 +222,10 @@ export class AuthService {
     const token = localStorage.getItem(this.TOKEN_KEY);
     console.log('🎫 getToken() called, found token:', token ? `${token.substring(0, 20)}...` : 'null');
     
-    // If we have an old token format, clear it and return null
-    if (token && !token.startsWith('mock.') && !token.startsWith('eyJ')) {
-      console.log('🔄 Found old token format, clearing and forcing re-auth');
-      console.trace('Old token format clearing called from:');
+    // Only accept real JWT tokens
+    if (token && !token.startsWith('eyJ')) {
+      console.log('🔄 Found invalid token format, clearing and forcing re-auth');
+      console.trace('Invalid token format clearing called from:');
       localStorage.removeItem(this.TOKEN_KEY);
       this.currentUser.set(null);
       this.currentUserSubject.next(null);

@@ -1,10 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Router, NavigationEnd } from '@angular/router';
-import { Observable, fromEvent, timer } from 'rxjs';
-import { filter, debounceTime, takeUntil, map } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
-import { FingerprintService } from './fingerprint.service';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
 
 export interface AnalyticsEvent {
@@ -17,9 +13,8 @@ export interface AnalyticsEvent {
     productId?: string;
     searchQuery?: string;
     filterData?: any;
-    errorCode?: number;
-    screenSize?: { width: number; height: number };
     custom?: any;
+    screenSize?: { width: number; height: number };
   };
   performance?: {
     loadTime?: number;
@@ -32,7 +27,10 @@ export interface AnalyticsStats {
     totalViews: number;
     uniqueVisitors: number;
     uniqueUsers: number;
-    topPages: Array<{ path: string; views: number }>;
+    topPages: Array<{
+      path: string;
+      views: number;
+    }>;
   };
   trends: Array<{
     date: string;
@@ -40,14 +38,20 @@ export interface AnalyticsStats {
     uniqueVisitors: number;
   }>;
   devices: {
-    devices: Array<{ type: string; count: number }>;
-    browsers: Array<{ browser: string; count: number }>;
+    devices: Array<{ 
+      type: string; 
+      count: number; 
+    }>;
+    browsers: Array<{
+      browser: string;
+      count: number;
+    }>;
   };
   popularProducts: Array<{
     productId: string;
-    views: number;
     title: string;
     price: number;
+    views: number;
   }>;
   searchStats: Array<{
     query: string;
@@ -62,12 +66,10 @@ export interface RealtimeData {
   recentActivity: Array<{
     eventType: string;
     path: string;
-    user?: { name: string; email: string };
-    fingerprint?: string;
-    product?: { title: string; price: number };
+    user: { name: string; email: string } | null;
     timestamp: string;
     device: string;
-    browser?: string;
+    browser: string;
   }>;
 }
 
@@ -75,346 +77,211 @@ export interface RealtimeData {
   providedIn: 'root'
 })
 export class AnalyticsService {
-  private apiUrl = `${environment.apiUrl}/analytics`;
-  private sessionId: string = '';
-  private fingerprint: string = '';
-  private pageStartTime: number = Date.now();
-  private isTracking: boolean = true;
+  private http = inject(HttpClient);
+  private authService = inject(AuthService);
+  
+  private apiUrl = 'http://localhost:5000/api/analytics';
+  private sessionId: string;
+  private fingerprint: string;
+  private pageLoadTime: number = Date.now();
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private fingerprintService: FingerprintService,
-    private authService: AuthService
-  ) {
-    this.initializeAnalytics();
-  }
-
-  private async initializeAnalytics() {
-    try {
-      // Generate session ID
-      this.sessionId = this.generateSessionId();
-      
-      // Get fingerprint for anonymous tracking
-      this.fingerprint = await this.fingerprintService.getFingerprint();
-      
-      // Track route changes
-      this.trackRouteChanges();
-      
-      // Track page unload for time-on-page calculation
-      this.trackPageUnload();
-      
-      console.log('Analytics service initialized', { sessionId: this.sessionId });
-    } catch (error) {
-      console.error('Failed to initialize analytics:', error);
-    }
+  constructor() {
+    this.sessionId = this.generateSessionId();
+    this.fingerprint = this.generateFingerprint();
   }
 
   private generateSessionId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
 
-  private getHeaders(): HttpHeaders {
-    let headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'X-Fingerprint': this.fingerprint,
-      'X-Session-ID': this.sessionId
-    });
-
-    // Add auth token if user is logged in
-    const token = this.authService.getToken();
-    if (token) {
-      headers = headers.set('Authorization', `Bearer ${token}`);
+  private generateFingerprint(): string {
+    // Simple browser fingerprinting
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('Analytics fingerprint', 2, 2);
     }
-
-    return headers;
+    
+    const fingerprint = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset(),
+      canvas.toDataURL()
+    ].join('|');
+    
+    return this.hashCode(fingerprint).toString();
   }
 
-  private trackRouteChanges() {
-    this.router.events
-      .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe((event: NavigationEnd) => {
-        // Calculate time spent on previous page
-        const timeOnPage = Date.now() - this.pageStartTime;
-        
-        // Track the page view
-        this.trackPageView(event.urlAfterRedirects, {
-          performance: {
-            timeOnPage: timeOnPage > 100 ? timeOnPage : undefined
-          }
-        });
-        
-        // Reset page start time
-        this.pageStartTime = Date.now();
-      });
+  private hashCode(str: string): number {
+    let hash = 0;
+    if (str.length === 0) return hash;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
   }
 
-  private trackPageUnload() {
-    // Track time on page when user leaves
-    fromEvent(window, 'beforeunload').subscribe(() => {
-      const timeOnPage = Date.now() - this.pageStartTime;
-      
-      // Use navigator.sendBeacon for reliable tracking during page unload
-      if (navigator.sendBeacon && timeOnPage > 1000) {
-        const data = JSON.stringify({
-          eventType: 'session_end',
-          path: this.router.url,
-          fingerprint: this.fingerprint,
-          sessionId: this.sessionId,
-          performance: { timeOnPage }
-        });
-        
-        navigator.sendBeacon(`${this.apiUrl}/track`, data);
+  async trackEvent(event: AnalyticsEvent): Promise<void> {
+    try {
+      const token = this.authService.getToken();
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'X-Fingerprint': this.fingerprint,
+        'X-Session-ID': this.sessionId
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
-    });
+
+      const eventData: AnalyticsEvent = {
+        ...event,
+        fingerprint: this.fingerprint,
+        sessionId: this.sessionId,
+        referrer: document.referrer || undefined,
+        data: {
+          ...event.data,
+          screenSize: {
+            width: screen.width,
+            height: screen.height
+          }
+        }
+      };
+
+      await firstValueFrom(
+        this.http.post(`${this.apiUrl}/track`, eventData, { headers })
+      );
+    } catch (error) {
+      console.error('Failed to track analytics event:', error);
+    }
   }
 
-  // Track a page view
-  trackPageView(path: string, additionalData: Partial<AnalyticsEvent> = {}) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
+  async trackPageView(path: string, additionalData?: any): Promise<void> {
+    const loadTime = Date.now() - this.pageLoadTime;
+    this.pageLoadTime = Date.now(); // Reset for next page
+    
+    await this.trackEvent({
       eventType: 'page_view',
       path,
-      referrer: document.referrer,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
       data: {
-        screenSize: {
-          width: window.screen.width,
-          height: window.screen.height
-        },
-        ...additionalData.data
+        custom: additionalData
       },
       performance: {
-        loadTime: performance.now(),
-        ...additionalData.performance
+        loadTime
       }
-    };
-
-    this.sendEvent(event);
+    });
   }
 
-  // Track product view
-  trackProductView(productId: string, productTitle?: string) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
+  async trackProductView(productId: string): Promise<void> {
+    await this.trackEvent({
       eventType: 'product_view',
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
-      data: {
-        productId,
-        custom: { productTitle }
-      }
-    };
-
-    this.sendEvent(event);
-  }
-
-  // Track search
-  trackSearch(query: string, filters?: any) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
-      eventType: 'search',
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
-      data: {
-        searchQuery: query,
-        filterData: filters
-      }
-    };
-
-    this.sendEvent(event);
-  }
-
-  // Track product favorite/unfavorite
-  trackProductFavorite(productId: string, action: 'add' | 'remove') {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
-      eventType: action === 'add' ? 'product_favorite' : 'product_unfavorite',
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
+      path: window.location.pathname,
       data: {
         productId
       }
-    };
-
-    this.sendEvent(event);
+    });
   }
 
-  // Track product contact
-  trackProductContact(productId: string, contactMethod: string) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
-      eventType: 'product_contact',
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
+  async trackSearch(query: string): Promise<void> {
+    await this.trackEvent({
+      eventType: 'search',
+      path: window.location.pathname,
       data: {
-        productId,
-        custom: { contactMethod }
+        searchQuery: query
       }
-    };
-
-    this.sendEvent(event);
+    });
   }
 
-  // Track filter usage
-  trackFilterUse(filters: any) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
-      eventType: 'filter_use',
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
+  async trackProductInteraction(action: string, productId?: string): Promise<void> {
+    await this.trackEvent({
+      eventType: action,
+      path: window.location.pathname,
       data: {
-        filterData: filters
+        productId
       }
-    };
-
-    this.sendEvent(event);
+    });
   }
 
-  // Track custom events
-  trackCustomEvent(eventType: string, data?: any) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
-      eventType,
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
-      data: {
-        custom: data
+  trackTimeOnPage(startTime: number): void {
+    const timeOnPage = Date.now() - startTime;
+    // We'll send this with the next page view or before unload
+    this.trackEvent({
+      eventType: 'page_view_end',
+      path: window.location.pathname,
+      performance: {
+        timeOnPage
       }
+    }).catch(err => console.error('Failed to track time on page:', err));
+  }
+
+  getAnalyticsStats(startDate?: string, endDate?: string, excludeAdmin: boolean = true): any {
+    const headers: any = {
+      'Content-Type': 'application/json'
     };
 
-    this.sendEvent(event);
+    const token = this.authService.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('excludeAdmin', excludeAdmin.toString());
+
+    return this.http.get<{ success: boolean; data: AnalyticsStats }>(`${this.apiUrl}/stats?${params.toString()}`, { headers });
   }
 
-  // Track errors
-  trackError(errorCode: number, errorMessage?: string) {
-    if (!this.isTracking) return;
-
-    const event: AnalyticsEvent = {
-      eventType: 'error',
-      path: this.router.url,
-      fingerprint: this.fingerprint,
-      sessionId: this.sessionId,
-      data: {
-        errorCode,
-        custom: { errorMessage }
-      }
+  getRealtimeData(excludeAdmin: boolean = true): any {
+    const headers: any = {
+      'Content-Type': 'application/json'
     };
 
-    this.sendEvent(event);
-  }
-
-  private sendEvent(event: AnalyticsEvent): void {
-    this.http.post(`${this.apiUrl}/track`, event, { headers: this.getHeaders() })
-      .subscribe({
-        next: () => {
-          // Event tracked successfully (silent)
-        },
-        error: (error) => {
-          console.warn('Failed to track analytics event:', error);
-        }
-      });
-  }
-
-  // Admin methods for retrieving analytics data
-
-  getAnalyticsStats(startDate?: Date, endDate?: Date, excludeAdmin: boolean = true): Observable<AnalyticsStats> {
-    const params: any = { excludeAdmin: excludeAdmin.toString() };
-    
-    if (startDate) {
-      params.startDate = startDate.toISOString();
-    }
-    if (endDate) {
-      params.endDate = endDate.toISOString();
+    const token = this.authService.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return this.http.get<{ success: boolean; data: AnalyticsStats }>(`${this.apiUrl}/stats`, {
-      headers: this.getHeaders(),
-      params
-    }).pipe(
-      filter((response: any) => response.success),
-      map((response: any) => response.data)
-    );
+    const params = new URLSearchParams();
+    params.append('excludeAdmin', excludeAdmin.toString());
+
+    return this.http.get<{ success: boolean; data: RealtimeData }>(`${this.apiUrl}/realtime?${params.toString()}`, { headers });
   }
 
-  getRealtimeData(excludeAdmin: boolean = true): Observable<RealtimeData> {
-    const params = { excludeAdmin: excludeAdmin.toString() };
-
-    return this.http.get<{ success: boolean; data: RealtimeData }>(`${this.apiUrl}/realtime`, {
-      headers: this.getHeaders(),
-      params
-    }).pipe(
-      filter((response: any) => response.success),
-      map((response: any) => response.data)
-    );
-  }
-
-  exportAnalyticsData(startDate?: Date, endDate?: Date, format: 'json' | 'csv' = 'json', excludeAdmin: boolean = true): Observable<any> {
-    const params: any = {
-      format,
-      excludeAdmin: excludeAdmin.toString()
+  exportAnalyticsData(startDate?: string, endDate?: string, format: string = 'json', excludeAdmin: boolean = true): any {
+    const headers: any = {
+      'Content-Type': 'application/json'
     };
-    
-    if (startDate) {
-      params.startDate = startDate.toISOString();
-    }
-    if (endDate) {
-      params.endDate = endDate.toISOString();
+
+    const token = this.authService.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const headers = this.getHeaders();
-    
-    if (format === 'csv') {
-      // For CSV, we expect a text response
-      return this.http.get(`${this.apiUrl}/export`, {
-        headers,
-        params,
-        responseType: 'text'
-      });
-    } else {
-      // For JSON, normal response
-      return this.http.get<any>(`${this.apiUrl}/export`, {
-        headers,
-        params
-      });
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('format', format);
+    params.append('excludeAdmin', excludeAdmin.toString());
+
+    return this.http.get(`${this.apiUrl}/export?${params.toString()}`, { headers });
+  }
+
+  cleanupOldData(daysToKeep: number = 365): any {
+    const headers: any = {
+      'Content-Type': 'application/json'
+    };
+
+    const token = this.authService.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-  }
 
-  cleanupOldData(daysToKeep: number = 365): Observable<any> {
-    return this.http.post(`${this.apiUrl}/cleanup`, 
-      { daysToKeep },
-      { headers: this.getHeaders() }
-    );
-  }
-
-  // Enable/disable tracking
-  enableTracking() {
-    this.isTracking = true;
-  }
-
-  disableTracking() {
-    this.isTracking = false;
-  }
-
-  getSessionId(): string {
-    return this.sessionId;
-  }
-
-  getFingerprint(): string {
-    return this.fingerprint;
+    return this.http.post(`${this.apiUrl}/cleanup`, { daysToKeep }, { headers });
   }
 }

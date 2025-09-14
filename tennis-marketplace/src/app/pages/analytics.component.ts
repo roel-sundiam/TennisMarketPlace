@@ -314,12 +314,12 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30); // Last 30 days
     
-    this.analyticsService.getAnalyticsStats(startDate, new Date(), this.excludeAdmin()).subscribe({
-      next: (data) => {
-        this.analyticsData.set(data);
+    this.analyticsService.getAnalyticsStats(startDate.toISOString(), new Date().toISOString(), this.excludeAdmin()).subscribe({
+      next: (response: { success: boolean; data: AnalyticsStats }) => {
+        this.analyticsData.set(response.data);
         this.loading.set(false);
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Failed to load analytics data:', error);
         this.notificationService.error('Failed to load analytics data');
         this.loading.set(false);
@@ -331,10 +331,10 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
 
   loadRealtimeData() {
     this.analyticsService.getRealtimeData(this.excludeAdmin()).subscribe({
-      next: (data) => {
-        this.realtimeData.set(data);
+      next: (response: { success: boolean; data: RealtimeData }) => {
+        this.realtimeData.set(response.data);
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Failed to load real-time data:', error);
       }
     });
@@ -384,7 +384,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     const data = this.analyticsData();
     if (!data?.devices?.devices) return '0';
     
-    const total = data.devices.devices.reduce((sum, device) => sum + device.count, 0);
+    const total = data.devices.devices.reduce((sum: number, device: any) => sum + device.count, 0);
     if (total === 0) return '0';
     
     return ((count / total) * 100).toFixed(0);
@@ -396,9 +396,9 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     
     // Get last 7 days from trends
     const lastWeek = data.trends.slice(-7);
-    const maxViews = Math.max(...lastWeek.map(day => day.views));
+    const maxViews = Math.max(...lastWeek.map((day: any) => day.views));
     
-    return lastWeek.map(day => ({
+    return lastWeek.map((day: any) => ({
       date: new Date(day.date).toLocaleDateString('en-US', { 
         month: 'short', 
         day: 'numeric' 
@@ -427,9 +427,9 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
     
-    this.analyticsService.exportAnalyticsData(startDate, new Date(), format, this.excludeAdmin())
+    this.analyticsService.exportAnalyticsData(startDate.toISOString(), new Date().toISOString(), format, this.excludeAdmin())
       .subscribe({
-        next: (data) => {
+        next: (data: any) => {
           const blob = new Blob(
             [format === 'csv' ? data : JSON.stringify(data, null, 2)],
             { type: format === 'csv' ? 'text/csv' : 'application/json' }
@@ -444,7 +444,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
           
           this.notificationService.success(`Analytics data exported as ${format.toUpperCase()}`);
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Export failed:', error);
           this.notificationService.error('Failed to export data');
         }
@@ -457,11 +457,11 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     }
     
     this.analyticsService.cleanupOldData(365).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         this.notificationService.success('Old analytics data cleaned up successfully');
         this.loadAnalyticsData(); // Refresh data
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Cleanup failed:', error);
         this.notificationService.error('Failed to cleanup old data');
       }
