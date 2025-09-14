@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Marketplace - Background Color Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            950: '#052e16',
+                        },
+                        background: {
+                            main: '#f0ebe6',      // Darker warm background with orange undertones
+                            section: '#e8e0d8',   // Darker warm tone for section alternates
+                            card: '#ffffff',      // Pure white for cards
+                            soft: '#eae3dc',      // Darker warm alternative
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body style="background-color: #f0ebe6;" class="min-h-screen">
+    <!-- Header -->
+    <header class="shadow-sm border-b border-orange-200" style="background-color: #FF5533;">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">🎾</span>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">TennisMarket</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                Your Tennis Gear Marketplace
+            </h2>
+            <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Testing the new sophisticated neutral background theme.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#" class="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors">
+                    Start Shopping
+                </a>
+                <a href="#" class="border border-green-600 text-green-600 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-50 transition-colors">
+                    Sell Your Gear
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="py-12 px-4" style="background-color: #e8e0d8;">
+        <div class="max-w-6xl mx-auto">
+            <h3 class="text-3xl font-bold text-center mb-12 text-gray-900">Shop by Category</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-green-200 hover:shadow-lg transition-all cursor-pointer">
+                    <div class="text-3xl mb-3">🎾</div>
+                    <h4 class="font-semibold text-gray-900 mb-1">Racquets</h4>
+                    <p class="text-sm text-gray-600">25 items</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-green-200 hover:shadow-lg transition-all cursor-pointer">
+                    <div class="text-3xl mb-3">🧵</div>
+                    <h4 class="font-semibold text-gray-900 mb-1">Strings</h4>
+                    <p class="text-sm text-gray-600">15 items</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-green-200 hover:shadow-lg transition-all cursor-pointer">
+                    <div class="text-3xl mb-3">👟</div>
+                    <h4 class="font-semibold text-gray-900 mb-1">Shoes</h4>
+                    <p class="text-sm text-gray-600">18 items</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-green-200 hover:shadow-lg transition-all cursor-pointer">
+                    <div class="text-3xl mb-3">👕</div>
+                    <h4 class="font-semibold text-gray-900 mb-1">Apparel</h4>
+                    <p class="text-sm text-gray-600">32 items</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products Section -->
+    <section class="py-12 px-4">
+        <div class="max-w-6xl mx-auto">
+            <h3 class="text-3xl font-bold text-gray-900 mb-8">Featured Items</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                    <div class="aspect-square bg-gray-100 flex items-center justify-center">
+                        <span class="text-4xl">🎾</span>
+                    </div>
+                    <div class="p-4">
+                        <h4 class="font-semibold text-gray-900 mb-2">Wilson Pro Staff</h4>
+                        <p class="text-green-600 font-bold text-lg">₱14,500</p>
+                        <p class="text-sm text-gray-600">Manila, Philippines</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

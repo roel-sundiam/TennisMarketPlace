@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Coin Balance Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <h1 class="text-2xl font-bold mb-6 text-center">Mobile Coin Balance Demo</h1>
+    
+    <!-- Demo for different screen sizes -->
+    <div class="space-y-6">
+        <!-- Mobile Layout (Always Visible) -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-3">📱 Mobile Layout (Always Visible)</h2>
+            
+            <!-- Mobile Coin Balance -->
+            <div class="coin-balance-container">
+                <div class="flex flex-col space-y-2">
+                    <!-- Coin Balance Row -->
+                    <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                                <span class="text-xs font-bold text-white">₱</span>
+                            </div>
+                            <div class="flex items-baseline space-x-1">
+                                <span class="font-bold text-green-800 text-lg">-188</span>
+                                <span class="text-sm text-green-600">coins</span>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <!-- Daily Bonus Button -->
+                            <button class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors min-h-[36px]">
+                                +5
+                            </button>
+                            
+                            <!-- Buy Coins Button -->
+                            <button class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors min-h-[36px]">
+                                Buy
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Low Balance Warning for Mobile -->
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-orange-700 font-medium">⚠️ Low coin balance!</span>
+                            <button class="px-3 py-1 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors">
+                                Buy More
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Layout (Hidden on Mobile) -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-3">💻 Desktop Layout (Hidden on Mobile)</h2>
+            
+            <!-- Desktop Coin Balance (Responsive - hidden on mobile) -->
+            <div class="hidden sm:flex items-center space-x-3">
+                <!-- Coin Balance Display -->
+                <div class="flex items-center space-x-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
+                    <div class="flex items-center space-x-1">
+                        <div class="w-5 h-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                            <span class="text-xs font-bold text-white">₱</span>
+                        </div>
+                        <span class="font-semibold text-green-800">-188</span>
+                        <span class="text-sm text-green-600">coins</span>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="flex space-x-1">
+                        <!-- Daily Bonus Button -->
+                        <button class="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                            +5
+                        </button>
+                        
+                        <!-- Buy Coins Button -->
+                        <button class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                            +
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Low Balance Warning for Desktop -->
+                <div class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                    Low balance! <button class="underline">Buy more</button>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-500 mt-2 sm:hidden">👆 This desktop layout is hidden on mobile screens</p>
+            <p class="text-sm text-gray-500 mt-2 hidden sm:block">👆 This is the desktop layout (only visible on larger screens)</p>
+        </div>
+
+        <!-- Features Summary -->
+        <div class="bg-blue-50 p-4 rounded-lg">
+            <h2 class="text-lg font-semibold mb-3 text-blue-800">✅ Mobile Improvements</h2>
+            <ul class="space-y-2 text-sm text-blue-700">
+                <li>✅ <strong>Larger text:</strong> Balance shows in text-lg (18px) instead of text-sm</li>
+                <li>✅ <strong>Touch-friendly buttons:</strong> Minimum 36px height, proper spacing</li>
+                <li>✅ <strong>Clear purchase options:</strong> "Buy" button always visible, "Buy More" for low balance</li>
+                <li>✅ <strong>Responsive layout:</strong> Different layouts for mobile vs desktop</li>
+                <li>✅ <strong>Full-width design:</strong> Uses available mobile screen space</li>
+                <li>✅ <strong>Better warnings:</strong> Clear low balance alerts with action buttons</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Demo button functionality
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                if (e.target.textContent.includes('Buy')) {
+                    alert('🎉 Coin purchase modal would open here!');
+                } else if (e.target.textContent.includes('+5')) {
+                    alert('🎁 Daily bonus claimed! +5 coins');
+                } else if (e.target.textContent.includes('+')) {
+                    alert('💰 Coin purchase modal would open here!');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

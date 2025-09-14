@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Notification Demo - TennisMarket</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes slide-in-right {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes progress-bar {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+        
+        .animate-slide-in-right {
+            animation: slide-in-right 0.3s ease-out;
+        }
+        
+        .progress-animation {
+            animation: progress-bar 5s linear forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">🎾 TennisMarket Toast Notifications Demo</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Test Different Notification Types</h2>
+            <div class="space-x-4">
+                <button onclick="showSuccessNotification()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Success (Listing Created)
+                </button>
+                <button onclick="showErrorNotification()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Error
+                </button>
+                <button onclick="showWarningNotification()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Warning
+                </button>
+                <button onclick="showInfoNotification()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Info
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold mb-2">Features:</h3>
+            <ul class="list-disc list-inside text-gray-700 space-y-1">
+                <li>Modern, mobile-friendly design</li>
+                <li>Professional animations (slide-in from right)</li>
+                <li>Progress bar showing remaining time</li>
+                <li>Different colors for each notification type</li>
+                <li>Auto-dismiss after configured duration</li>
+                <li>Manual dismiss with close button</li>
+                <li>Tennis-themed success icon (🎾)</li>
+                <li>Responsive layout that works on all devices</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full">
+        <!-- Toasts will be dynamically inserted here -->
+    </div>
+
+    <script>
+        let notificationId = 0;
+
+        function createToastNotification(type, title, message, duration = 5000) {
+            const id = ++notificationId;
+            const icons = {
+                success: '🎾',
+                error: '❌', 
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+
+            const colors = {
+                success: 'border-l-green-500 text-green-500',
+                error: 'border-l-red-500 text-red-500',
+                warning: 'border-l-yellow-500 text-yellow-500',
+                info: 'border-l-blue-500 text-blue-500'
+            };
+
+            const toastHTML = `
+                <div id="toast-${id}" class="transform transition-all duration-300 ease-in-out animate-slide-in-right bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden border-l-4 ${colors[type]}" role="alert">
+                    <!-- Progress bar -->
+                    <div class="absolute top-0 left-0 h-1 bg-current opacity-30 progress-animation ${colors[type]}"></div>
+                    
+                    <div class="p-4">
+                        <div class="flex items-start gap-3">
+                            <!-- Icon -->
+                            <div class="flex-shrink-0 mt-0.5">
+                                <span class="text-lg">${icons[type]}</span>
+                            </div>
+                            
+                            <!-- Content -->
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-semibold text-gray-900 text-sm leading-5">
+                                    ${title}
+                                </h4>
+                                ${message ? `<p class="mt-1 text-sm text-gray-600 leading-4">${message}</p>` : ''}
+                            </div>
+                            
+                            <!-- Close button -->
+                            <button onclick="dismissToast(${id})" class="flex-shrink-0 ml-2 p-1 rounded-full hover:bg-gray-100 transition-colors duration-150">
+                                <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const container = document.getElementById('toast-container');
+            container.insertAdjacentHTML('beforeend', toastHTML);
+
+            // Auto-dismiss after duration
+            if (duration > 0) {
+                setTimeout(() => dismissToast(id), duration);
+            }
+        }
+
+        function dismissToast(id) {
+            const toast = document.getElementById(`toast-${id}`);
+            if (toast) {
+                toast.style.transform = 'translateX(100%)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+
+        function showSuccessNotification() {
+            createToastNotification(
+                'success',
+                'Listing created successfully!',
+                'Your listing will be reviewed by our team before going live.',
+                6000
+            );
+        }
+
+        function showErrorNotification() {
+            createToastNotification(
+                'error',
+                'Upload failed',
+                'Failed to upload images. Please try again.',
+                7000
+            );
+        }
+
+        function showWarningNotification() {
+            createToastNotification(
+                'warning',
+                'Authentication required',
+                'You must be logged in to create a listing.',
+                5000
+            );
+        }
+
+        function showInfoNotification() {
+            createToastNotification(
+                'info',
+                'Pro tip',
+                'Add high-quality photos to increase your listing views.',
+                5000
+            );
+        }
+    </script>
+</body>
+</html>
