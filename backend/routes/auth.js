@@ -138,9 +138,8 @@ router.post('/login', async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
-    // Update last login (optional)
-    user.lastLoginAt = new Date();
-    await user.save();
+    // Update last login (optional) - use findByIdAndUpdate to skip validation issues
+    await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() });
 
     // Remove password from response
     const userResponse = user.toJSON();

@@ -17,10 +17,11 @@ import { ToastNotificationComponent } from './components/toast-notification.comp
 import { ModalComponent } from './components/modal.component';
 import { LowBalanceModalComponent } from './components/low-balance-modal.component';
 import { CoinPurchaseModalComponent } from './components/coin-purchase-modal.component';
+import { ReportModalComponent } from './components/report-modal.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, CommonModule, ProductCardComponent, PriceComponent, CoinBalanceComponent, ThemeToggleComponent, PWAInstallPromptComponent, ToastNotificationComponent, ModalComponent, LowBalanceModalComponent, CoinPurchaseModalComponent],
+  imports: [RouterOutlet, RouterLink, CommonModule, ProductCardComponent, PriceComponent, CoinBalanceComponent, ThemeToggleComponent, PWAInstallPromptComponent, ToastNotificationComponent, ModalComponent, LowBalanceModalComponent, CoinPurchaseModalComponent, ReportModalComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -45,6 +46,10 @@ export class App implements OnInit, OnDestroy {
   // Modal state for coin balance restrictions
   showLowBalanceModal = signal<boolean>(false);
   showCoinPurchaseModal = signal<boolean>(false);
+
+  // Report modal state
+  showReportModal = signal<boolean>(false);
+  reportingProduct = signal<Product | null>(null);
 
   constructor() {}
 
@@ -191,9 +196,21 @@ export class App implements OnInit, OnDestroy {
 
   onProductClick(product: Product): void {
     console.log('Product clicked:', product);
-    
-    // Check coin balance for authenticated users - block if negative
+
+    // Check coin balance for authenticated users - block if negative (except for admin users)
     if (this.authService.isAuthenticated()) {
+      const currentUser = this.authService.currentUser();
+
+      // Admin users have unlimited access, skip balance check
+      if (currentUser?.role === 'admin') {
+        console.log('Admin user detected, bypassing balance check');
+        console.log('Navigating to product ID:', product._id);
+        this.router.navigate(['/product', product._id]).then(success => {
+          console.log('Navigation result:', success ? 'SUCCESS' : 'FAILED');
+        });
+        return;
+      }
+
       this.coinService.loadCoinBalance().subscribe({
         next: (balance) => {
           if (balance.balance < 0) {
@@ -303,6 +320,62 @@ export class App implements OnInit, OnDestroy {
       console.log('Purchase request submitted! Coins pending admin approval.');
     } else {
       console.log('Coins purchased successfully! You can now view products.');
+    }
+  }
+
+  // Report modal handlers
+  onReportClick(product: Product): void {
+    // Check if user is authenticated
+    if (!this.authService.isAuthenticated()) {
+      console.log('User must be logged in to report products');
+      // You could show a login prompt here
+      return;
+    }
+
+    console.log('🚨 Report click for product:', product.title);
+    this.reportingProduct.set(product);
+    this.showReportModal.set(true);
+  }
+
+  closeReportModal(): void {
+    this.showReportModal.set(false);
+    this.reportingProduct.set(null);
+  }
+
+  onReportSubmitted(event: any): void {
+    console.log('Report submitted:', event);
+    this.closeReportModal();
+
+    if (event.success) {
+      // Show success message - you could use a toast notification here
+      console.log('✅ Report submitted successfully');
+    } else {
+      // Show error message
+      console.error('❌ Report submission failed:', event.error);
+    }
+  }
+
+  getProductSeller(product: Product): any {
+    // Extract seller information from product data
+    if (typeof product.seller === 'object' && product.seller !== null) {
+      return {
+        _id: product.seller._id,
+        firstName: product.seller.firstName,
+        lastName: product.seller.lastName,
+        email: '',
+        profilePicture: product.seller.profilePicture || '',
+        role: 'seller'
+      };
+    } else {
+      // Fallback for string seller ID
+      return {
+        _id: product.seller || 'unknown',
+        firstName: 'Unknown',
+        lastName: 'Seller',
+        email: '',
+        profilePicture: '',
+        role: 'seller'
+      };
     }
   }
 }

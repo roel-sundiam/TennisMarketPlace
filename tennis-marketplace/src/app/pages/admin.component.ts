@@ -1,8 +1,8 @@
 import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { PriceComponent } from '../components/price.component';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { AdminService, AdminProduct, AdminStats, CoinStats, UserCoinDetails, SuspiciousActivities } from '../services/admin.service';
 import { ModalService } from '../services/modal.service';
 
@@ -36,174 +36,488 @@ export interface AdminUser {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, PriceComponent],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="min-h-screen bg-gray-50">
-      <!-- Admin Header -->
-      <header class="bg-white shadow-sm border-b border-gray-200">
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <!-- Modern Admin Header -->
+      <header class="bg-white/90 backdrop-blur-xl shadow-lg border-b border-gray-200/50 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-16">
-            <div class="flex items-center gap-3">
-              <a routerLink="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity">
-                <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                  <span class="text-white font-bold text-sm">🎾</span>
-                </div>
-                <h1 class="text-xl font-bold text-gray-900">TennisMarket</h1>
-              </a>
-              <span class="text-gray-400">›</span>
-              <h2 class="text-lg font-semibold text-gray-700">Admin Dashboard</h2>
-            </div>
+          <div class="flex items-center justify-between h-20">
+            <!-- Left side - Brand & Title -->
             <div class="flex items-center gap-4">
-              <a routerLink="/analytics" 
-                 class="px-3 py-2 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors flex items-center gap-2">
-                📊 Site Analytics
+              <a routerLink="/" class="group flex items-center gap-3 hover:opacity-90 transition-all duration-300">
+                <div class="w-10 h-10 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+                  <span class="text-white font-bold text-lg">🎾</span>
+                </div>
+                <div class="hidden sm:block">
+                  <h1 class="text-xl font-bold text-gray-900">TennisMarket</h1>
+                  <p class="text-xs text-gray-500 -mt-1">Tennis Marketplace</p>
+                </div>
               </a>
-              <span class="text-sm text-gray-600">Admin</span>
-              <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                <span class="text-white text-sm">👤</span>
+              <div class="hidden md:flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <span class="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-full shadow-md">
+                  Admin Dashboard
+                </span>
+              </div>
+            </div>
+
+            <!-- Right side - Actions & Profile -->
+            <div class="flex items-center gap-3">
+              <!-- Quick Actions -->
+              <div class="hidden lg:flex items-center gap-2">
+                <a routerLink="/analytics"
+                   class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 group">
+                  <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  </svg>
+                  Analytics
+                </a>
+
+                <button class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 group">
+                  <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-12h0z"></path>
+                  </svg>
+                  <span class="hidden xl:inline">Export</span>
+                </button>
+              </div>
+
+              <!-- Mobile menu button -->
+              <button (click)="toggleMobileMenu()" class="md:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+              </button>
+
+              <!-- Admin Profile -->
+              <div class="flex items-center gap-3 pl-3 border-l border-gray-200">
+                <div class="hidden sm:block text-right">
+                  <p class="text-sm font-semibold text-gray-900">Admin User</p>
+                  <p class="text-xs text-gray-500">Super Administrator</p>
+                </div>
+                <div class="relative">
+                  <button class="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 group">
+                    <svg class="w-5 h-5 text-white group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                  </button>
+                  <!-- Status indicator -->
+                  <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- Mobile Menu -->
+          @if (showMobileMenu()) {
+            <div class="md:hidden border-t border-gray-200 py-4 animate-in slide-in-from-top duration-200">
+              <div class="flex flex-col space-y-2">
+                <a routerLink="/analytics" class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  </svg>
+                  Site Analytics
+                </a>
+                <button class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors w-full text-left">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Export Data
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </header>
 
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-600">Total Users</p>
-                <p class="text-2xl font-bold text-gray-900">{{ stats().totalUsers }}</p>
-              </div>
-              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <span class="text-blue-600 text-xl">👥</span>
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">+12% from last month</p>
+        <!-- Modern Stats Overview -->
+        <div class="mb-10">
+          <div class="mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
+            <p class="text-gray-600">Monitor your platform's key metrics and performance</p>
           </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-600">Active Listings</p>
-                <p class="text-2xl font-bold text-gray-900">{{ stats().activeListings }}</p>
-              </div>
-              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <span class="text-green-600 text-xl">📦</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Total Users Card -->
+            <div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50"></div>
+              <div class="relative p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <div class="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg group-hover:shadow-blue-500/25 transition-all duration-300">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-medium text-gray-600 mb-1">Total Users</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ stats().totalUsers | number }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    +12%
+                  </span>
+                  <span class="text-xs text-gray-500">vs last month</span>
+                </div>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">{{ stats().pendingApproval }} pending approval</p>
-          </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                <p class="text-2xl font-bold text-gray-900">
-                  <app-price [amount]="stats().monthlyRevenue" size="lg"></app-price>
-                </p>
-              </div>
-              <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <span class="text-yellow-600 text-xl">💰</span>
+            <!-- Active Listings Card -->
+            <div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-br from-green-50/50 to-emerald-50/50"></div>
+              <div class="relative p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <div class="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg group-hover:shadow-green-500/25 transition-all duration-300">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-medium text-gray-600 mb-1">Active Listings</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ stats().activeListings | number }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {{ stats().pendingApproval }}
+                  </span>
+                  <span class="text-xs text-gray-500">pending approval</span>
+                </div>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">{{ stats().boostedListings }} boosted listings</p>
-          </div>
 
-          <div class="bg-white rounded-2xl border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-600">Subscriptions</p>
-                <p class="text-2xl font-bold text-gray-900">{{ stats().subscriptions.basic + stats().subscriptions.pro }}</p>
-              </div>
-              <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <span class="text-purple-600 text-xl">⭐</span>
+            <!-- Monthly Revenue Card -->
+            <div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-br from-yellow-50/50 to-orange-50/50"></div>
+              <div class="relative p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <div class="p-3 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg group-hover:shadow-yellow-500/25 transition-all duration-300">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-medium text-gray-600 mb-1">Monthly Revenue</p>
+                    <p class="text-3xl font-bold text-gray-900">
+₱{{ stats().monthlyRevenue | number }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                    </svg>
+                    {{ stats().boostedListings }}
+                  </span>
+                  <span class="text-xs text-gray-500">boosted listings</span>
+                </div>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">{{ stats().subscriptions.free }} free users</p>
+
+            <!-- Subscriptions Card -->
+            <div class="group relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-pink-50/50"></div>
+              <div class="relative p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <div class="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg group-hover:shadow-purple-500/25 transition-all duration-300">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                    </svg>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-medium text-gray-600 mb-1">Premium Users</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ (stats().subscriptions.basic + stats().subscriptions.pro) | number }}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded-full">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    {{ stats().subscriptions.free | number }}
+                  </span>
+                  <span class="text-xs text-gray-500">free users</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="bg-white rounded-2xl border border-gray-200 mb-6">
-          <div class="border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8 px-6">
+        <!-- Modern Navigation Tabs -->
+        <div class="relative bg-white/90 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg mb-8 overflow-hidden">
+          <!-- Mobile Tab Selector -->
+          <div class="sm:hidden border-b border-gray-200">
+            <select (change)="onTabSelectChange($event)"
+                    [value]="activeTab()"
+                    class="block w-full px-6 py-4 text-gray-900 bg-transparent border-0 focus:ring-0 focus:outline-none">
               @for (tab of tabs(); track tab.id) {
-                <button
-                  (click)="setActiveTab(tab.id)"
-                  [class]="activeTab() === tab.id 
-                    ? 'border-green-500 text-green-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'">
-                  {{ tab.label }}
-                  @if (tab.badge) {
-                    <span class="bg-gray-100 text-gray-900 ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium">
-                      {{ tab.badge }}
-                    </span>
-                  }
-                </button>
+                <option [value]="tab.id">{{ tab.label }}</option>
               }
-            </nav>
+            </select>
           </div>
 
-          <div class="p-6">
+          <!-- Desktop Navigation -->
+          <div class="hidden sm:block">
+            <nav class="relative">
+              <!-- Background Slider -->
+              <div class="absolute bottom-0 h-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-300 ease-in-out"
+                   [style.width.%]="100 / tabs().length"
+                   [style.left.%]="getSliderPosition()">
+              </div>
+
+              <div class="flex overflow-x-auto">
+                @for (tab of tabs(); track tab.id) {
+                  <button
+                    (click)="setActiveTab(tab.id)"
+                    class="relative flex-1 group px-6 py-5 text-center transition-all duration-200"
+                    [class.text-blue-600]="activeTab() === tab.id"
+                    [class.text-gray-600]="activeTab() !== tab.id"
+                    [class.bg-blue-50/50]="activeTab() === tab.id">
+
+                    <!-- Tab Content -->
+                    <div class="flex flex-col items-center gap-2">
+                      <!-- Tab Icon -->
+                      <div class="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200"
+                           [class.bg-blue-100]="activeTab() === tab.id"
+                           [class.bg-gray-100]="activeTab() !== tab.id"
+                           [class.group-hover:bg-blue-50]="activeTab() !== tab.id">
+                        @switch (tab.id) {
+                          @case ('pending') {
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                          }
+                          @case ('listings') {
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                          }
+                          @case ('users') {
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                            </svg>
+                          }
+                          @case ('user-reports') {
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                          }
+                          @case ('coins') {
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                          }
+                          @case ('activities') {
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                          }
+                        }
+                      </div>
+
+                      <!-- Tab Label -->
+                      <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium whitespace-nowrap">{{ tab.label }}</span>
+                        @if (tab.badge) {
+                          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-all duration-200"
+                                [class.bg-blue-100]="activeTab() === tab.id"
+                                [class.text-blue-700]="activeTab() === tab.id"
+                                [class.bg-gray-100]="activeTab() !== tab.id"
+                                [class.text-gray-600]="activeTab() !== tab.id">
+                            {{ tab.badge }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Hover Effect -->
+                    <div class="absolute inset-x-0 bottom-0 h-1 bg-gray-200 group-hover:bg-gray-300 transition-colors duration-200"
+                         [class.opacity-0]="activeTab() === tab.id"
+                         [class.opacity-100]="activeTab() !== tab.id">
+                    </div>
+                  </button>
+                }
+              </div>
+            </nav>
+          </div>
+        </div>
+
+        <!-- Modern Content Area -->
+        <div class="relative bg-white/90 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg overflow-hidden">
+          <!-- Loading State -->
+          @if (isLoading()) {
+            <div class="flex items-center justify-center py-16 px-8">
+              <div class="text-center space-y-4">
+                <!-- Animated Loading Spinner -->
+                <div class="relative w-16 h-16 mx-auto">
+                  <div class="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+                  <div class="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin"></div>
+                </div>
+
+                <!-- Loading Message -->
+                <div class="space-y-2">
+                  <h3 class="text-lg font-semibold text-gray-900">{{ loadingMessage() }}</h3>
+                  <p class="text-gray-600">Please wait while we gather the latest information</p>
+                </div>
+
+                <!-- Loading Steps -->
+                <div class="flex items-center justify-center gap-2 mt-6">
+                  <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0s"></div>
+                  <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                  <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="p-6 sm:p-8">
             <!-- Pending Listings Tab -->
             @if (activeTab() === 'pending') {
-              <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-lg font-semibold text-gray-900">Pending Approval</h3>
-                  <div class="flex gap-2">
-                    <button 
+              <div class="space-y-6">
+                <!-- Section Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h3 class="text-2xl font-bold text-gray-900">Pending Approval</h3>
+                    <p class="text-gray-600 mt-1">Review and approve new product listings</p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 text-sm text-gray-500">
+                      <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      {{ pendingListings().length }} pending
+                    </div>
+                    <button
                       (click)="approveAll()"
-                      class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+                      class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-green-500/25">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
                       Approve All
                     </button>
                   </div>
                 </div>
 
-                @for (listing of pendingListings(); track listing._id) {
-                  <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div class="flex items-center justify-between">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-3 mb-2">
-                          <h4 class="font-semibold text-gray-900">{{ listing.title }}</h4>
+                <!-- Pending Listings Grid -->
+                <div class="grid gap-4">
+                  @for (listing of pendingListings(); track listing._id) {
+                    <div class="group relative bg-gradient-to-r from-white to-gray-50/50 border border-gray-200 rounded-2xl p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-300">
+                      <!-- Status Indicator -->
+                      <div class="absolute top-4 right-4">
+                        <div class="flex items-center gap-2">
                           @if (listing.isBoosted) {
-                            <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Boosted</span>
+                            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-medium rounded-full shadow-lg">
+                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                              </svg>
+                              Boosted
+                            </span>
                           }
-                        </div>
-                        <div class="text-sm text-gray-600 space-y-1">
-                          <p><span class="font-medium">Seller:</span> {{ listing.seller?.firstName || 'Unknown' }} {{ listing.seller?.lastName || '' }}</p>
-                          <p><span class="font-medium">Price:</span> <app-price [amount]="listing.price"></app-price></p>
-                          <p><span class="font-medium">Category:</span> {{ listing.category }}</p>
-                          <p><span class="font-medium">Created:</span> {{ listing.createdAt | date }}</p>
+                          <div class="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
                         </div>
                       </div>
-                      <div class="flex gap-2 ml-4">
-                        <button 
-                          (click)="approveListing(listing._id)"
-                          class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
-                          Approve
-                        </button>
-                        <button 
-                          (click)="rejectListing(listing._id)"
-                          class="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700">
-                          Reject
-                        </button>
-                        <button class="px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700">
-                          View
-                        </button>
+
+                      <div class="grid lg:grid-cols-3 gap-6">
+                        <!-- Product Info -->
+                        <div class="lg:col-span-2 space-y-4">
+                          <div>
+                            <h4 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                              {{ listing.title }}
+                            </h4>
+                            <div class="flex items-center gap-4 text-sm text-gray-600">
+                              <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                </svg>
+                                {{ listing.category }}
+                              </span>
+                              <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ listing.createdAt | date:'short' }}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div class="grid sm:grid-cols-2 gap-4 p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                            <div class="space-y-2">
+                              <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-700">Seller</span>
+                              </div>
+                              <p class="text-sm text-gray-900 font-semibold">
+                                {{ listing.seller?.firstName || 'Unknown' }} {{ listing.seller?.lastName || '' }}
+                              </p>
+                            </div>
+                            <div class="space-y-2">
+                              <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="text-sm font-medium text-gray-700">Price</span>
+                              </div>
+                              <p class="text-lg font-bold text-gray-900">
+                                ₱{{ listing.price | number }}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex lg:flex-col gap-3 lg:justify-center">
+                          <button
+                            (click)="approveListing(listing._id)"
+                            class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-medium rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-green-500/25">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="hidden sm:inline">Approve</span>
+                          </button>
+
+                          <button
+                            (click)="rejectListing(listing._id)"
+                            class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-medium rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-lg hover:shadow-red-500/25">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            <span class="hidden sm:inline">Reject</span>
+                          </button>
+
+                          <button class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <span class="hidden sm:inline">View</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                }
+                  }
 
-                @if (pendingListings().length === 0) {
-                  <div class="text-center py-8">
-                    <div class="text-4xl mb-4">✅</div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">All caught up!</h3>
-                    <p class="text-gray-600">No listings pending approval.</p>
-                  </div>
-                }
+                  <!-- Empty State -->
+                  @if (pendingListings().length === 0) {
+                    <div class="text-center py-12 px-6 bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-2xl border border-dashed border-gray-300">
+                      <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </div>
+                      <h3 class="text-lg font-semibold text-gray-900 mb-2">All caught up!</h3>
+                      <p class="text-gray-600">No listings pending approval at the moment.</p>
+                    </div>
+                  }
+                </div>
               </div>
             }
 
@@ -257,7 +571,7 @@ export interface AdminUser {
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ listing.seller?.firstName || 'Unknown' }} {{ listing.seller?.lastName || '' }}</td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <app-price [amount]="listing.price"></app-price>
+                            ₱{{ listing.price | number }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap">
                             <span [class]="getStatusColor(listing.isApproved)">
@@ -785,6 +1099,207 @@ export interface AdminUser {
               </div>
             }
 
+            <!-- User Reports Tab -->
+            @if (activeTab() === 'user-reports') {
+              <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-900">User Reports Management</h3>
+                  <div class="text-sm text-gray-500">
+                    {{ reportStats().pendingReports }} pending • {{ reportStats().totalReports }} total
+                  </div>
+                </div>
+
+                <!-- Report Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <span class="text-yellow-600">⏳</span>
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-500">Pending</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ reportStats().pendingReports }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <span class="text-green-600">✅</span>
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-500">Resolved</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ reportStats().resolvedReports }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                          <span class="text-red-600">🚨</span>
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-500">Urgent</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ reportStats().urgentReports }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span class="text-blue-600">📊</span>
+                        </div>
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-500">Total Reports</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ reportStats().totalReports }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Report Filters -->
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                  <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center space-x-2">
+                      <label for="report-status-filter" class="text-sm font-medium text-gray-700">Status:</label>
+                      <select id="report-status-filter"
+                              [(ngModel)]="reportFilters().status"
+                              (ngModelChange)="updateReportFilters('status', $event)"
+                              class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="under_review">Under Review</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="dismissed">Dismissed</option>
+                        <option value="escalated">Escalated</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                      <label for="report-type-filter" class="text-sm font-medium text-gray-700">Type:</label>
+                      <select id="report-type-filter"
+                              [(ngModel)]="reportFilters().type"
+                              (ngModelChange)="updateReportFilters('type', $event)"
+                              class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="all">All Types</option>
+                        <option value="fraud">Fraud</option>
+                        <option value="harassment">Harassment</option>
+                        <option value="fake_products">Fake Products</option>
+                        <option value="spam">Spam</option>
+                        <option value="inappropriate_behavior">Inappropriate Behavior</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                      <label for="report-priority-filter" class="text-sm font-medium text-gray-700">Priority:</label>
+                      <select id="report-priority-filter"
+                              [(ngModel)]="reportFilters().priority"
+                              (ngModelChange)="updateReportFilters('priority', $event)"
+                              class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="all">All Priorities</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+                    </div>
+
+                    <button (click)="refreshReports()"
+                            class="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Reports List -->
+                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  @if (filteredReports().length > 0) {
+                    <div class="divide-y divide-gray-200">
+                      @for (report of filteredReports(); track report._id) {
+                        <div class="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
+                             (click)="viewReportDetails(report)">
+                          <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                              <!-- Report Header -->
+                              <div class="flex items-center space-x-3 mb-2">
+                                <span [class]="getReportPriorityClass(report.priority)">
+                                  {{ getReportPriorityIcon(report.priority) }}
+                                </span>
+                                <span class="text-sm font-medium text-gray-900">{{ getReportTypeLabel(report.type) }}</span>
+                                <span [class]="getReportStatusClass(report.status)">
+                                  {{ report.status.replace('_', ' ') | titlecase }}
+                                </span>
+                                <span class="text-xs text-gray-500">
+                                  {{ formatTimeAgo(report.createdAt) }}
+                                </span>
+                              </div>
+
+                              <!-- Report Content -->
+                              <div class="mb-3">
+                                <h4 class="text-sm font-medium text-gray-900 mb-1">{{ report.reason }}</h4>
+                                <p class="text-sm text-gray-600 line-clamp-2">{{ report.description }}</p>
+                              </div>
+
+                              <!-- Reporter and Reported User -->
+                              <div class="flex items-center space-x-6 text-xs text-gray-500">
+                                <span>
+                                  Reporter: <strong class="text-gray-700">{{ report.reporter.firstName }} {{ report.reporter.lastName }}</strong>
+                                </span>
+                                <span>
+                                  Reported: <strong class="text-gray-700">{{ report.reportedUser.firstName }} {{ report.reportedUser.lastName }}</strong>
+                                </span>
+                                @if (report.reportedProduct) {
+                                  <span>
+                                    Product: <strong class="text-gray-700">{{ report.reportedProduct.title }}</strong>
+                                  </span>
+                                }
+                              </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="flex flex-col gap-2 ml-6">
+                              @if (report.status === 'pending' || report.status === 'under_review') {
+                                <button
+                                  (click)="quickResolveReport(report, $event)"
+                                  class="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors">
+                                  Quick Resolve
+                                </button>
+                                <button
+                                  (click)="suspendUserFromReport(report, $event)"
+                                  class="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors">
+                                  Suspend User
+                                </button>
+                              }
+                              <button
+                                (click)="viewReportDetails(report, $event)"
+                                class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">
+                                View Details
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="text-center py-12">
+                      <div class="text-6xl mb-4">📋</div>
+                      <h3 class="text-lg font-semibold text-gray-900 mb-2">No reports found</h3>
+                      <p class="text-gray-600">User reports will appear here when they are submitted.</p>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
             <!-- Coin Management Tab -->
             @if (activeTab() === 'coins') {
               <div class="space-y-6">
@@ -1053,26 +1568,26 @@ export interface AdminUser {
                       <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Basic Subscriptions</span>
                         <span class="text-sm font-medium">
-                          <app-price [amount]="stats().subscriptions.basic * 299"></app-price>
+₱{{ (stats().subscriptions.basic * 299) | number }}
                         </span>
                       </div>
                       <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Pro Subscriptions</span>
                         <span class="text-sm font-medium">
-                          <app-price [amount]="stats().subscriptions.pro * 999"></app-price>
+₱{{ (stats().subscriptions.pro * 999) | number }}
                         </span>
                       </div>
                       <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Listing Boosts</span>
                         <span class="text-sm font-medium">
-                          <app-price [amount]="stats().boostedListings * 50"></app-price>
+₱{{ (stats().boostedListings * 50) | number }}
                         </span>
                       </div>
                       <div class="border-t pt-2 mt-2">
                         <div class="flex items-center justify-between font-semibold">
                           <span class="text-sm text-gray-900">Total Monthly</span>
                           <span class="text-sm">
-                            <app-price [amount]="stats().monthlyRevenue"></app-price>
+                            ₱{{ stats().monthlyRevenue | number }}
                           </span>
                         </div>
                       </div>
@@ -1081,7 +1596,8 @@ export interface AdminUser {
                 </div>
               </div>
             }
-          </div>
+            </div>
+          }
         </div>
       </div>
 
@@ -1202,10 +1718,14 @@ export interface AdminUser {
 })
 export class AdminComponent implements OnInit {
   private adminService = inject(AdminService);
+  private http = inject(HttpClient);
   private modalService = inject(ModalService);
   
   activeTab = signal<string>('pending');
-  
+  showMobileMenu = signal<boolean>(false);
+  isLoading = signal<boolean>(true);
+  loadingMessage = signal<string>('Loading dashboard data...');
+
   // Filters
   listingFilter = 'all';
   listingSearch = '';
@@ -1221,8 +1741,9 @@ export class AdminComponent implements OnInit {
       { id: 'inquiries', label: 'Inquiries', badge: this.allInquiries().length },
       { id: 'user-approval', label: 'User Approval', badge: this.pendingUsers().length },
       { id: 'verification', label: 'Verification', badge: this.pendingVerifications().length },
+      { id: 'user-reports', label: 'User Reports', badge: this.pendingReports().length },
       { id: 'coins', label: 'Coin Management', badge: null },
-      { id: 'reports', label: 'Reports', badge: null }
+      { id: 'reports', label: 'Analytics', badge: null }
     ];
     console.log('🏷️ Admin tabs computed:', tabsArray.map(t => `${t.label} (${t.badge || 'no badge'})`));
     return tabsArray;
@@ -1250,7 +1771,6 @@ export class AdminComponent implements OnInit {
 
   // Real data from API
   allProducts = signal<AdminProduct[]>([]);
-  isLoading = signal<boolean>(false);
 
   // Real user data from API
   allUsers = signal<any[]>([]);
@@ -1298,6 +1818,21 @@ export class AdminComponent implements OnInit {
     activeUsers: 0,
     totalUsers: 0,
     approvalRate: 0
+  });
+
+  // User reports management data
+  allReportsData = signal<any[]>([]);
+  reportStats = signal<any>({
+    totalReports: 0,
+    pendingReports: 0,
+    resolvedReports: 0,
+    urgentReports: 0
+  });
+  selectedReport = signal<any | null>(null);
+  reportFilters = signal<any>({
+    status: 'all',
+    type: 'all',
+    priority: 'all'
   });
 
   // Inquiry management data
@@ -1371,6 +1906,35 @@ export class AdminComponent implements OnInit {
   pendingVerifications = computed(() => this.pendingVerificationsData());
 
   pendingUsers = computed(() => this.pendingUsersData());
+
+  pendingReports = computed(() => this.allReportsData().filter(r => r.status === 'pending' || r.status === 'under_review'));
+
+  filteredReports = computed(() => {
+    let reports = [...this.allReportsData()];
+    const filters = this.reportFilters();
+
+    if (filters.status !== 'all') {
+      reports = reports.filter(r => r.status === filters.status);
+    }
+
+    if (filters.type !== 'all') {
+      reports = reports.filter(r => r.type === filters.type);
+    }
+
+    if (filters.priority !== 'all') {
+      reports = reports.filter(r => r.priority === filters.priority);
+    }
+
+    return reports.sort((a: any, b: any) => {
+      // Sort by priority first (urgent > high > medium > low)
+      const priorityOrder: { [key: string]: number } = { urgent: 4, high: 3, medium: 2, low: 1 };
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      }
+      // Then by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  });
 
   filteredListings = computed(() => {
     let products = [...this.allProducts()];
@@ -1464,9 +2028,15 @@ export class AdminComponent implements OnInit {
     this.loadAdminData();
   }
 
+  toggleMobileMenu(): void {
+    this.showMobileMenu.update(show => !show);
+  }
+
   setActiveTab(tabId: string): void {
     console.log('🎯 Setting active tab to:', tabId);
     this.activeTab.set(tabId);
+    // Close mobile menu when tab is selected
+    this.showMobileMenu.set(false);
     
     if (tabId === 'inquiries') {
       console.log('💬 Inquiries tab selected, current inquiries:', this.allInquiries().length);
@@ -1474,33 +2044,64 @@ export class AdminComponent implements OnInit {
   }
 
   // Data loading methods
-  private loadAdminData(): void {
-    this.loadAllProducts();
-    this.loadAllUsers();
-    this.loadAdminStats();
-    this.loadCoinStats();
-    this.loadVerificationData();
-    this.loadUserApprovalData();
-    this.loadAllInquiries();
+  private async loadAdminData(): Promise<void> {
+    this.isLoading.set(true);
+
+    try {
+      // Load data in sequence with loading messages
+      this.loadingMessage.set('Loading products...');
+      await this.loadAllProducts();
+
+      this.loadingMessage.set('Loading users...');
+      await this.loadAllUsers();
+
+      this.loadingMessage.set('Loading statistics...');
+      await this.loadAdminStats();
+
+      this.loadingMessage.set('Loading coin data...');
+      await this.loadCoinStats();
+
+      this.loadingMessage.set('Loading verifications...');
+      await this.loadVerificationData();
+
+      this.loadingMessage.set('Loading approvals...');
+      await this.loadUserApprovalData();
+
+      this.loadingMessage.set('Loading inquiries...');
+      await this.loadAllInquiries();
+
+      this.loadingMessage.set('Loading reports...');
+      await this.loadReports();
+
+      // Add a small delay for smooth transition
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+      this.loadingMessage.set('Error loading data...');
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
-  private loadAllProducts(): void {
+  private loadAllProducts(): Promise<void> {
     console.log('🔍 Loading admin products...');
-    this.isLoading.set(true);
-    this.adminService.getAllProducts({ limit: 100 }).subscribe({
-      next: (response) => {
-        console.log('✅ Admin products loaded:', response);
-        this.allProducts.set(response.products);
-        this.isLoading.set(false);
-      },
-      error: (error) => {
-        console.error('❌ Failed to load admin products:', error);
-        console.log('📝 Response status:', error.status);
-        console.log('📝 Response message:', error.error);
-        this.isLoading.set(false);
-        // Fallback to pending products only
-        this.loadPendingProducts();
-      }
+    return new Promise((resolve) => {
+      this.adminService.getAllProducts({ limit: 100 }).subscribe({
+        next: (response) => {
+          console.log('✅ Admin products loaded:', response);
+          this.allProducts.set(response.products);
+          resolve();
+        },
+        error: (error) => {
+          console.error('❌ Failed to load admin products:', error);
+          console.log('📝 Response status:', error.status);
+          console.log('📝 Response message:', error.error);
+          // Fallback to pending products only
+          this.loadPendingProducts();
+          resolve(); // Still resolve to continue loading other data
+        }
+      });
     });
   }
 
@@ -2119,5 +2720,249 @@ export class AdminComponent implements OnInit {
     }
     // Fallback to partial user ID if user not found
     return `User ID ${userId.substring(0, 8)}...`;
+  }
+
+  // Report management methods
+  async loadReports(): Promise<void> {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
+
+      // Load all reports
+      const reportsResponse = await firstValueFrom(
+        this.http.get<any>('/api/reports', { headers })
+      );
+
+      this.allReportsData.set(reportsResponse.reports || []);
+
+      // Update report stats
+      const stats = {
+        totalReports: reportsResponse.reports?.length || 0,
+        pendingReports: reportsResponse.reports?.filter((r: any) => r.status === 'pending' || r.status === 'under_review')?.length || 0,
+        resolvedReports: reportsResponse.reports?.filter((r: any) => r.status === 'resolved')?.length || 0,
+        urgentReports: reportsResponse.reports?.filter((r: any) => r.priority === 'urgent')?.length || 0
+      };
+
+      this.reportStats.set(stats);
+
+      console.log('📊 Loaded reports:', stats);
+    } catch (error) {
+      console.error('Error loading reports:', error);
+    }
+  }
+
+  refreshReports(): void {
+    this.loadReports();
+  }
+
+  updateReportFilters(filterType: string, value: string): void {
+    const currentFilters = this.reportFilters();
+    this.reportFilters.set({
+      ...currentFilters,
+      [filterType]: value
+    });
+  }
+
+  getReportTypeLabel(type: string): string {
+    const typeLabels: { [key: string]: string } = {
+      fraud: 'Fraud',
+      harassment: 'Harassment',
+      fake_products: 'Fake Products',
+      inappropriate_behavior: 'Inappropriate Behavior',
+      spam: 'Spam',
+      scam: 'Scam',
+      fake_listing: 'Fake Listing',
+      no_show: 'No Show',
+      payment_issues: 'Payment Issues',
+      other: 'Other'
+    };
+    return typeLabels[type] || type;
+  }
+
+  getReportPriorityClass(priority: string): string {
+    const classes: { [key: string]: string } = {
+      low: 'text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full',
+      medium: 'text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full',
+      high: 'text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-full',
+      urgent: 'text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full'
+    };
+    return classes[priority] || classes['medium'];
+  }
+
+  getReportPriorityIcon(priority: string): string {
+    const icons: { [key: string]: string } = {
+      low: '⬇️',
+      medium: '➡️',
+      high: '⬆️',
+      urgent: '🚨'
+    };
+    return icons[priority] || '➡️';
+  }
+
+  getReportStatusClass(status: string): string {
+    const classes: { [key: string]: string } = {
+      pending: 'text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full',
+      under_review: 'text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full',
+      resolved: 'text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full',
+      dismissed: 'text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full',
+      escalated: 'text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full'
+    };
+    return classes[status] || classes['pending'];
+  }
+
+  formatTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 60) {
+      return `${minutes}m ago`;
+    } else if (hours < 24) {
+      return `${hours}h ago`;
+    } else {
+      return `${days}d ago`;
+    }
+  }
+
+  viewReportDetails(report: any, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    this.selectedReport.set(report);
+
+    // Here you could open a detailed report modal
+    // For now, we'll just show a basic alert with report info
+    const reportInfo = `
+Report Details:
+- Type: ${this.getReportTypeLabel(report.type)}
+- Status: ${report.status}
+- Priority: ${report.priority}
+- Reason: ${report.reason}
+- Description: ${report.description}
+- Reporter: ${report.reporter.firstName} ${report.reporter.lastName}
+- Reported User: ${report.reportedUser.firstName} ${report.reportedUser.lastName}
+- Created: ${new Date(report.createdAt).toLocaleString()}
+    `;
+
+    alert(reportInfo);
+  }
+
+  async quickResolveReport(report: any, event?: Event): Promise<void> {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    const reason = prompt('Enter resolution reason:', 'Issue resolved - no action needed');
+    if (!reason) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
+
+      const payload = {
+        action: 'no_action',
+        reason: reason,
+        adminNotes: `Quick resolved by admin at ${new Date().toLocaleString()}`
+      };
+
+      await firstValueFrom(
+        this.http.put(`/api/reports/${report._id}/resolve`, payload, { headers })
+      );
+
+      this.modalService.success('Report Resolved', 'Report has been marked as resolved.');
+      this.loadReports(); // Refresh the reports list
+    } catch (error) {
+      console.error('Error resolving report:', error);
+      this.modalService.error('Resolution Failed', 'Failed to resolve report. Please try again.');
+    }
+  }
+
+  async suspendUserFromReport(report: any, event?: Event): Promise<void> {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    const reason = prompt('Enter suspension reason:', `Suspended due to ${report.type} report: ${report.reason}`);
+    if (!reason) return;
+
+    const durationStr = prompt('Enter suspension duration in hours (24 for 1 day, 168 for 1 week):', '24');
+    const duration = parseInt(durationStr || '24', 10);
+
+    if (isNaN(duration) || duration <= 0) {
+      alert('Invalid duration. Please enter a positive number of hours.');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      });
+
+      // First suspend the user
+      const suspensionPayload = {
+        reason: reason,
+        type: 'temporary',
+        duration: duration,
+        reportId: report._id,
+        notes: `Suspended based on report: ${report.type} - ${report.reason}`
+      };
+
+      await firstValueFrom(
+        this.http.put(`/api/users/${report.reportedUser._id}/suspend`, suspensionPayload, { headers })
+      );
+
+      // Then resolve the report
+      const reportPayload = {
+        action: 'user_suspended',
+        reason: reason,
+        adminNotes: `User suspended for ${duration} hours based on this report`,
+        userAction: {
+          suspensionType: 'temporary',
+          duration: duration
+        }
+      };
+
+      await firstValueFrom(
+        this.http.put(`/api/reports/${report._id}/resolve`, reportPayload, { headers })
+      );
+
+      this.modalService.success('User Suspended', `User has been suspended for ${duration} hours and the report has been resolved.`);
+      this.loadReports(); // Refresh the reports list
+      this.loadAllUsers(); // Refresh the users list to show suspension status
+    } catch (error) {
+      console.error('Error suspending user:', error);
+      this.modalService.error('Suspension Failed', 'Failed to suspend user. Please try again.');
+    }
+  }
+
+  getSliderPosition(): number {
+    const tabIndex = this.tabs().findIndex(t => t.id === this.activeTab());
+    return (tabIndex * 100) / this.tabs().length;
+  }
+
+  onTabSelectChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    if (target) {
+      this.setActiveTab(target.value);
+    }
   }
 }

@@ -22,7 +22,7 @@ import { CoinPurchaseModalComponent } from './coin-purchase-modal.component';
               <div class="w-4 h-4 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
                 <span class="text-xs font-bold text-white">₱</span>
               </div>
-              <span class="font-bold text-sm" [class]="coinBalance().balance < 0 ? 'text-red-200' : 'text-white'">{{ coinBalance().balance }}</span>
+              <span class="font-bold text-sm" [class]="getBalanceTextClass()">{{ getDisplayBalance() }}</span>
             </div>
             
             <!-- Action Buttons -->
@@ -38,10 +38,10 @@ import { CoinPurchaseModalComponent } from './coin-purchase-modal.component';
           </div>
           
           <!-- Low Balance Banner (appears below header when balance is low) -->
-          @if (coinBalance().balance < 25) {
+          @if (shouldShowLowBalanceWarning()) {
             <div class="fixed top-16 left-0 right-0 z-30 bg-orange-500 text-white px-4 py-2 shadow-lg animate-slide-down">
               <div class="max-w-7xl mx-auto flex items-center justify-between">
-                <span class="text-sm font-medium">⚠️ Low coin balance: {{ coinBalance().balance }} coins</span>
+                <span class="text-sm font-medium">⚠️ Low coin balance: {{ getDisplayBalance() }} coins</span>
                 <button 
                   (click)="openCoinPurchase()" 
                   class="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-sm rounded-lg transition-colors backdrop-blur-sm">
@@ -60,7 +60,7 @@ import { CoinPurchaseModalComponent } from './coin-purchase-modal.component';
               <div class="w-5 h-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
                 <span class="text-xs font-bold text-white">₱</span>
               </div>
-              <span class="font-semibold" [class]="coinBalance().balance < 0 ? 'text-red-600' : 'text-green-800'">{{ coinBalance().balance }}</span>
+              <span class="font-semibold" [class]="getDesktopBalanceTextClass()">{{ getDisplayBalance() }}</span>
               <span class="text-sm text-green-600">coins</span>
             </div>
             
@@ -77,7 +77,7 @@ import { CoinPurchaseModalComponent } from './coin-purchase-modal.component';
           </div>
 
           <!-- Low Balance Warning for Desktop -->
-          @if (coinBalance().balance < 25) {
+          @if (shouldShowLowBalanceWarning()) {
             <div class="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
               Low balance! <button (click)="openCoinPurchase()" class="underline">Buy more</button>
             </div>
@@ -261,5 +261,38 @@ export class CoinBalanceComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       this.clearMessages();
     }, 3000);
+  }
+
+  getDisplayBalance(): string | number {
+    const currentUser = this.authService.currentUser();
+    if (currentUser?.role === 'admin') {
+      return '∞'; // Infinity symbol for unlimited
+    }
+    return this.coinBalance().balance;
+  }
+
+  getBalanceTextClass(): string {
+    const currentUser = this.authService.currentUser();
+    if (currentUser?.role === 'admin') {
+      return 'text-green-200'; // Green for admin/unlimited
+    }
+    return this.coinBalance().balance < 0 ? 'text-red-200' : 'text-white';
+  }
+
+  getDesktopBalanceTextClass(): string {
+    const currentUser = this.authService.currentUser();
+    if (currentUser?.role === 'admin') {
+      return 'text-green-600'; // Green for admin/unlimited
+    }
+    return this.coinBalance().balance < 0 ? 'text-red-600' : 'text-green-800';
+  }
+
+  shouldShowLowBalanceWarning(): boolean {
+    const currentUser = this.authService.currentUser();
+    // Don't show low balance warnings for admin users
+    if (currentUser?.role === 'admin') {
+      return false;
+    }
+    return this.coinBalance().balance < 25;
   }
 }

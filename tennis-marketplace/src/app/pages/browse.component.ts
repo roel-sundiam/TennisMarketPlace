@@ -1078,19 +1078,26 @@ export class BrowseComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
-    // Check coin balance for authenticated users - block if negative
+    // Check coin balance for authenticated users - block if negative (except for admin users)
     if (this.authService.isAuthenticated()) {
-      this.coinService.loadCoinBalance().subscribe({
-        next: (balance) => {
-          if (balance.balance < 0) {
-            this.showLowBalanceModal.set(true);
-            return;
+      const currentUser = this.authService.currentUser();
+
+      // Admin users have unlimited access, skip balance check
+      if (currentUser?.role === 'admin') {
+        console.log('Admin user detected, bypassing balance check for browse page');
+      } else {
+        this.coinService.loadCoinBalance().subscribe({
+          next: (balance) => {
+            if (balance.balance < 0) {
+              this.showLowBalanceModal.set(true);
+              return;
+            }
+          },
+          error: (error) => {
+            console.error('Failed to load coin balance:', error);
           }
-        },
-        error: (error) => {
-          console.error('Failed to load coin balance:', error);
-        }
-      });
+        });
+      }
     }
 
     this.loadProducts();

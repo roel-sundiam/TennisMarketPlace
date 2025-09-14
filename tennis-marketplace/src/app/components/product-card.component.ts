@@ -50,8 +50,26 @@ import { Product } from '../services/product.service';
         </div>
         
         
+        <!-- Report Button -->
+        <button
+          (click)="onReportClick($event)"
+          class="absolute top-4 right-16 w-10 h-10 rounded-full bg-white/90 dark:bg-dark-100/90 backdrop-blur-sm shadow-lg border border-white/30 dark:border-dark-300/30 z-20 transform hover:scale-110 transition-all duration-300 flex items-center justify-center group/report hover:bg-red-50 dark:hover:bg-red-900/20"
+          [attr.aria-label]="'Report this product'">
+          <svg
+            class="w-4 h-4 transition-all duration-300 text-gray-500 group-hover/report:text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.34 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+        </button>
+
         <!-- Heart Favorite Button -->
-        <button 
+        <button
           (click)="onFavoriteClick($event)"
           class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 dark:bg-dark-100/90 backdrop-blur-sm shadow-lg border border-white/30 dark:border-dark-300/30 z-20 transform hover:scale-110 transition-all duration-300 flex items-center justify-center group/heart hover:bg-white dark:hover:bg-dark-100"
           [attr.aria-label]="isFavorited ? 'Remove from favorites' : 'Add to favorites'">
@@ -191,9 +209,10 @@ import { Product } from '../services/product.service';
 export class ProductCardComponent {
   @Input() product!: Product;
   @Input() isFavorited = false;
-  
+
   @Output() productClick = new EventEmitter<Product>();
   @Output() favoriteClick = new EventEmitter<{ product: Product, isFavorited: boolean }>();
+  @Output() reportClick = new EventEmitter<Product>();
 
   imageLoaded = false;
 
@@ -255,16 +274,27 @@ export class ProductCardComponent {
 
   onFavoriteClick(event: Event): void {
     event.stopPropagation(); // Prevent card click
-    
+
     // Haptic feedback for mobile devices
     if ('vibrate' in navigator) {
       navigator.vibrate(50);
     }
-    
-    this.favoriteClick.emit({ 
-      product: this.product, 
-      isFavorited: !this.isFavorited 
+
+    this.favoriteClick.emit({
+      product: this.product,
+      isFavorited: !this.isFavorited
     });
+  }
+
+  onReportClick(event: Event): void {
+    event.stopPropagation(); // Prevent card click
+
+    // Haptic feedback for mobile devices
+    if ('vibrate' in navigator) {
+      navigator.vibrate(100);
+    }
+
+    this.reportClick.emit(this.product);
   }
   
   // New methods for enhanced functionality

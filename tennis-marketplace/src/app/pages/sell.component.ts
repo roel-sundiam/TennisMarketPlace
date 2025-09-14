@@ -560,7 +560,15 @@ export class SellComponent implements OnInit {
       return;
     }
 
-    // Check coin balance - block if negative
+    // Check coin balance - block if negative (except for admin users)
+    const currentUser = this.authService.currentUser();
+
+    // Admin users have unlimited access, skip balance check
+    if (currentUser?.role === 'admin') {
+      console.log('Admin user detected, bypassing balance check for sell page');
+      return;
+    }
+
     this.coinService.loadCoinBalance().subscribe({
       next: (balance) => {
         if (balance.balance < 0) {

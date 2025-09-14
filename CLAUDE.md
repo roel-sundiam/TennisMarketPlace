@@ -203,3 +203,11 @@ Pending features for Shopee-style upgrade:
 - Real-time notifications
 
 The current architecture supports these additions without major refactoring.
+
+## Git Management
+
+Claude Code handles all git operations for this repository:
+- I'll handle all `git add`, `git commit`, and `git push` operations when you request them
+- **Trigger phrase**: When you say **"go git"**, I will automatically handle all git operations (add, commit, push)
+- Simply ask to "commit changes" or "push updates" and I'll take care of the git workflow
+- Commit messages follow project conventions with descriptive summaries

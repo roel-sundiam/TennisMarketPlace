@@ -249,11 +249,12 @@
         @if (products().length > 0) {
           <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             @for (product of products(); track product._id) {
-              <app-product-card 
+              <app-product-card
               [product]="product"
               [isFavorited]="isFavorited(product._id)"
               (productClick)="onProductClick($event)"
-              (favoriteClick)="onFavoriteClick($event)">
+              (favoriteClick)="onFavoriteClick($event)"
+              (reportClick)="onReportClick($event)">
             </app-product-card>
           }
           </div>
@@ -395,5 +396,16 @@
       (close)="closeCoinPurchaseModal()"
       (purchaseComplete)="onCoinPurchaseComplete($event)">
     </app-coin-purchase-modal>
+  }
+
+  <!-- Report Modal -->
+  @if (showReportModal() && reportingProduct()) {
+    <app-report-modal
+      [reportedUser]="getProductSeller(reportingProduct()!)"
+      [reportedProduct]="reportingProduct()"
+      [reportSource]="'product'"
+      (closed)="closeReportModal()"
+      (submitted)="onReportSubmitted($event)">
+    </app-report-modal>
   }
 </div>

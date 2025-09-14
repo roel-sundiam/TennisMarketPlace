@@ -710,6 +710,254 @@ router.get('/registration-violations', authenticate, authorize(['admin']), async
   }
 });
 
+// PUT /api/users/:id/suspend - Suspend user account (admin only)
+router.put('/:id/suspend', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { reason, type = 'temporary', duration, notes, reportId } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Suspension reason is required' });
+    }
+
+    const validTypes = ['temporary', 'indefinite', 'permanent'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid suspension type' });
+    }
+
+    if (type === 'temporary' && !duration) {
+      return res.status(400).json({ error: 'Duration is required for temporary suspensions' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Cannot suspend admin users' });
+    }
+
+    if (user.suspension.isSuspended && user.suspension.suspensionType === 'permanent') {
+      return res.status(400).json({ error: 'User is already permanently banned' });
+    }
+
+    // Suspend the user
+    await user.suspendUser(req.user._id, reason, type, duration, reportId, notes);
+
+    console.log(`🚫 User ${user.email} suspended (${type}) by admin ${req.user.email}: ${reason}`);
+
+    res.json({
+      message: `User ${type === 'permanent' ? 'permanently banned' : 'suspended'} successfully`,
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        suspension: {
+          isSuspended: user.suspension.isSuspended,
+          suspensionType: user.suspension.suspensionType,
+          suspensionReason: user.suspension.suspensionReason,
+          suspendedAt: user.suspension.suspendedAt,
+          suspensionEnd: user.suspension.suspensionEnd,
+          timeRemaining: user.suspension.timeRemaining
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error suspending user:', error);
+    res.status(500).json({ error: 'Failed to suspend user' });
+  }
+});
+
+// PUT /api/users/:id/unsuspend - Unsuspend user account (admin only)
+router.put('/:id/unsuspend', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { reason, notes } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Unsuspension reason is required' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.suspension.isSuspended) {
+      return res.status(400).json({ error: 'User is not currently suspended' });
+    }
+
+    if (user.suspension.suspensionType === 'permanent') {
+      return res.status(400).json({
+        error: 'Cannot unsuspend permanently banned users. Contact system administrator.'
+      });
+    }
+
+    // Unsuspend the user
+    await user.unsuspendUser(req.user._id, reason, notes);
+
+    console.log(`✅ User ${user.email} unsuspended by admin ${req.user.email}: ${reason}`);
+
+    res.json({
+      message: 'User unsuspended successfully',
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        isActive: user.isActive,
+        suspension: {
+          isSuspended: user.suspension.isSuspended
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error unsuspending user:', error);
+    res.status(500).json({ error: 'Failed to unsuspend user' });
+  }
+});
+
+// POST /api/users/:id/warn - Issue warning to user (admin only)
+router.post('/:id/warn', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { reason, notes, reportId } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Warning reason is required' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Cannot warn admin users' });
+    }
+
+    // Issue warning
+    await user.issueWarning(req.user._id, reason, reportId, notes);
+
+    console.log(`⚠️ Warning issued to ${user.email} by admin ${req.user.email}: ${reason}`);
+
+    res.json({
+      message: 'Warning issued successfully',
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        warningCount: user.suspension.warningCount
+      }
+    });
+  } catch (error) {
+    console.error('Error issuing warning:', error);
+    res.status(500).json({ error: 'Failed to issue warning' });
+  }
+});
+
+// GET /api/users/:id/suspension-history - Get user suspension history (admin only)
+router.get('/:id/suspension-history', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .populate('suspension.history.actionBy', 'firstName lastName email role')
+      .populate('suspension.history.relatedReport', '_id type reason createdAt');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const history = user.getSuspensionHistory();
+
+    res.json({
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        currentStatus: user.getDisplayStatus(),
+        warningCount: user.suspension.warningCount
+      },
+      history: history.map(entry => ({
+        id: entry._id,
+        action: entry.action,
+        reason: entry.reason,
+        actionDate: entry.actionDate,
+        duration: entry.duration,
+        notes: entry.notes,
+        actionBy: entry.actionBy ? {
+          id: entry.actionBy._id,
+          name: `${entry.actionBy.firstName} ${entry.actionBy.lastName}`,
+          email: entry.actionBy.email,
+          role: entry.actionBy.role
+        } : null,
+        relatedReport: entry.relatedReport ? {
+          id: entry.relatedReport._id,
+          type: entry.relatedReport.type,
+          reason: entry.relatedReport.reason,
+          createdAt: entry.relatedReport.createdAt
+        } : null
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching suspension history:', error);
+    res.status(500).json({ error: 'Failed to fetch suspension history' });
+  }
+});
+
+// GET /api/users/suspended - Get all suspended users (admin only)
+router.get('/suspended', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type = 'all' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const query = { 'suspension.isSuspended': true };
+
+    if (type !== 'all') {
+      query['suspension.suspensionType'] = type;
+    }
+
+    const users = await User.find(query)
+      .select('-password')
+      .populate('suspension.suspendedBy', 'firstName lastName email role')
+      .sort({ 'suspension.suspendedAt': -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      users: users.map(user => ({
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role,
+        profilePicture: user.profilePicture,
+        suspension: {
+          suspensionType: user.suspension.suspensionType,
+          suspensionReason: user.suspension.suspensionReason,
+          suspendedAt: user.suspension.suspendedAt,
+          suspensionEnd: user.suspension.suspensionEnd,
+          timeRemaining: user.suspension.timeRemaining,
+          warningCount: user.suspension.warningCount,
+          suspendedBy: user.suspension.suspendedBy ? {
+            name: `${user.suspension.suspendedBy.firstName} ${user.suspension.suspendedBy.lastName}`,
+            role: user.suspension.suspendedBy.role
+          } : null
+        },
+        canAppeal: user.canAppeal(),
+        status: user.getDisplayStatus()
+      })),
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalUsers: total,
+        hasNext: skip + users.length < total,
+        hasPrev: parseInt(page) > 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching suspended users:', error);
+    res.status(500).json({ error: 'Failed to fetch suspended users' });
+  }
+});
+
 // DELETE /api/users/clear-test-data - Clear test user accounts (for cleanup)
 router.delete('/clear-test-data', async (req, res) => {
   try {
