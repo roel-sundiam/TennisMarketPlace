@@ -7,6 +7,7 @@ const analyticsSchema = new mongoose.Schema({
     required: true,
     enum: [
       'page_view',
+      'page_view_end',
       'product_view', 
       'product_favorite',
       'product_unfavorite',
@@ -20,7 +21,11 @@ const analyticsSchema = new mongoose.Schema({
       'coin_purchase',
       'error_404',
       'session_start',
-      'session_end'
+      'session_end',
+      'api_call',
+      'product_browse',
+      'product_create',
+      'product_boost'
     ],
     index: true
   },

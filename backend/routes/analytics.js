@@ -347,6 +347,424 @@ router.get('/export', authenticate, authorize(['admin']), async (req, res) => {
   }
 });
 
+// GET /api/analytics/user-visits - Get detailed user visits report (admin only)
+router.get('/user-visits', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const {
+      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+      endDate = new Date(),
+      page = 1,
+      limit = 50,
+      excludeAdmin = 'true',
+      sortBy = 'lastVisit' // lastVisit, firstVisit, visitCount, username
+    } = req.query;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const excludeAdminBool = excludeAdmin === 'true';
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const matchStage = {
+      createdAt: { $gte: start, $lte: end }
+    };
+
+    if (excludeAdminBool) {
+      matchStage.isAdminActivity = { $ne: true };
+    }
+
+    // Aggregate user visits data
+    const userVisitsAggregation = [
+      { 
+        $match: { 
+          ...matchStage,
+          userId: { $ne: null } // Only include records with valid userId
+        } 
+      },
+      {
+        $group: {
+          _id: '$userId',
+          firstVisit: { $min: '$createdAt' },
+          lastVisit: { $max: '$createdAt' },
+          totalPageViews: { $sum: 1 },
+          uniqueSessions: { $addToSet: '$sessionId' },
+          eventTypes: { $addToSet: '$eventType' },
+          devices: { $addToSet: '$device.type' },
+          browsers: { $addToSet: '$device.browser' },
+          paths: { $addToSet: '$path' }
+        }
+      },
+      {
+        $addFields: {
+          sessionCount: { $size: '$uniqueSessions' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      {
+        $unwind: {
+          path: '$userInfo',
+          preserveNullAndEmptyArrays: false // Only include records with valid user info
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          username: { $concat: ['$userInfo.firstName', ' ', '$userInfo.lastName'] },
+          email: '$userInfo.email',
+          userRole: '$userInfo.role',
+          subscription: '$userInfo.subscription',
+          isVerified: '$userInfo.isVerified',
+          firstVisit: 1,
+          lastVisit: 1,
+          totalPageViews: 1,
+          sessionCount: 1,
+          eventTypes: 1,
+          devices: 1,
+          browsers: 1,
+          uniquePathsCount: { $size: '$paths' },
+          avgPagesPerSession: { 
+            $round: [{ $divide: ['$totalPageViews', '$sessionCount'] }, 1]
+          }
+        }
+      }
+    ];
+
+    // Add sorting
+    let sortStage = {};
+    switch (sortBy) {
+      case 'firstVisit':
+        sortStage = { firstVisit: -1 };
+        break;
+      case 'visitCount':
+        sortStage = { totalPageViews: -1 };
+        break;
+      case 'username':
+        sortStage = { username: 1 };
+        break;
+      default: // lastVisit
+        sortStage = { lastVisit: -1 };
+    }
+
+    userVisitsAggregation.push({ $sort: sortStage });
+
+    // Get total count for pagination
+    const countAggregation = [
+      { 
+        $match: { 
+          ...matchStage,
+          userId: { $ne: null }
+        } 
+      },
+      {
+        $group: {
+          _id: '$userId'
+        }
+      },
+      { $count: 'total' }
+    ];
+    const countResult = await Analytics.aggregate(countAggregation);
+    const totalUsers = countResult[0]?.total || 0;
+
+    // Add pagination
+    userVisitsAggregation.push({ $skip: skip });
+    userVisitsAggregation.push({ $limit: limitNum });
+
+    const userVisits = await Analytics.aggregate(userVisitsAggregation);
+
+    // Get anonymous visitors count
+    const anonymousVisitorsCount = await Analytics.aggregate([
+      { 
+        $match: { 
+          ...matchStage, 
+          userId: null,
+          fingerprint: { $ne: null }
+        } 
+      },
+      {
+        $group: {
+          _id: '$fingerprint',
+          visitCount: { $sum: 1 },
+          lastVisit: { $max: '$createdAt' }
+        }
+      },
+      { $count: 'total' }
+    ]);
+
+    const anonymousCount = anonymousVisitorsCount[0]?.total || 0;
+
+    // Calculate summary stats
+    const totalPages = Math.ceil(totalUsers / limitNum);
+
+    res.json({
+      success: true,
+      data: {
+        users: userVisits,
+        summary: {
+          totalRegisteredVisitors: totalUsers,
+          totalAnonymousVisitors: anonymousCount,
+          totalVisitors: totalUsers + anonymousCount,
+          dateRange: {
+            start: start.toISOString(),
+            end: end.toISOString()
+          }
+        },
+        pagination: {
+          currentPage: pageNum,
+          totalPages,
+          totalItems: totalUsers,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1,
+          limit: limitNum
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching user visits:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch user visits data' 
+    });
+  }
+});
+
+// GET /api/analytics/anonymous-visits - Get detailed anonymous visitors report (admin only)
+router.get('/anonymous-visits', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const {
+      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+      endDate = new Date(),
+      page = 1,
+      limit = 50,
+      sortBy = 'lastVisit' // lastVisit, firstVisit, visitCount
+    } = req.query;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const matchStage = {
+      createdAt: { $gte: start, $lte: end },
+      userId: null,
+      fingerprint: { $ne: null }
+    };
+
+    // Aggregate anonymous visitors data
+    const anonymousVisitsAggregation = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: '$fingerprint',
+          firstVisit: { $min: '$createdAt' },
+          lastVisit: { $max: '$createdAt' },
+          totalPageViews: { $sum: 1 },
+          uniqueSessions: { $addToSet: '$sessionId' },
+          eventTypes: { $addToSet: '$eventType' },
+          devices: { $addToSet: '$device.type' },
+          browsers: { $addToSet: '$device.browser' },
+          paths: { $addToSet: '$path' },
+          ipAddresses: { $addToSet: '$ipAddress' },
+          userAgents: { $addToSet: '$userAgent' }
+        }
+      },
+      {
+        $addFields: {
+          sessionCount: { $size: '$uniqueSessions' },
+          deviceCount: { $size: '$devices' },
+          uniquePathsCount: { $size: '$paths' },
+          uniqueIPs: { $size: '$ipAddresses' }
+        }
+      },
+      {
+        $project: {
+          fingerprint: '$_id',
+          firstVisit: 1,
+          lastVisit: 1,
+          totalPageViews: 1,
+          sessionCount: 1,
+          deviceCount: 1,
+          uniquePathsCount: 1,
+          uniqueIPs: 1,
+          eventTypes: 1,
+          devices: 1,
+          browsers: 1,
+          paths: 1,
+          primaryDevice: { $arrayElemAt: ['$devices', 0] },
+          primaryBrowser: { $arrayElemAt: ['$browsers', 0] },
+          avgPagesPerSession: { 
+            $round: [{ $divide: ['$totalPageViews', '$sessionCount'] }, 1]
+          }
+        }
+      }
+    ];
+
+    // Add sorting
+    let sortStage = {};
+    switch (sortBy) {
+      case 'firstVisit':
+        sortStage = { firstVisit: -1 };
+        break;
+      case 'visitCount':
+        sortStage = { totalPageViews: -1 };
+        break;
+      default: // lastVisit
+        sortStage = { lastVisit: -1 };
+    }
+    anonymousVisitsAggregation.push({ $sort: sortStage });
+
+    // Get total count for pagination
+    const countResult = await Analytics.aggregate([
+      { $match: matchStage },
+      { $group: { _id: '$fingerprint' } },
+      { $count: 'total' }
+    ]);
+    const totalVisitors = countResult[0]?.total || 0;
+
+    // Add pagination
+    anonymousVisitsAggregation.push({ $skip: skip });
+    anonymousVisitsAggregation.push({ $limit: limitNum });
+
+    const anonymousVisits = await Analytics.aggregate(anonymousVisitsAggregation);
+
+    // Get summary statistics
+    const summaryStats = await Analytics.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalPageViews: { $sum: 1 },
+          uniqueFingerprints: { $addToSet: '$fingerprint' },
+          uniqueSessions: { $addToSet: '$sessionId' },
+          uniqueIPs: { $addToSet: '$ipAddress' },
+          devices: { $addToSet: '$device.type' },
+          browsers: { $addToSet: '$device.browser' }
+        }
+      },
+      {
+        $project: {
+          totalPageViews: 1,
+          uniqueVisitors: { $size: '$uniqueFingerprints' },
+          totalSessions: { $size: '$uniqueSessions' },
+          uniqueIPs: { $size: '$uniqueIPs' },
+          deviceBreakdown: '$devices',
+          browserBreakdown: '$browsers'
+        }
+      }
+    ]);
+
+    const summary = summaryStats[0] || {
+      totalPageViews: 0,
+      uniqueVisitors: 0,
+      totalSessions: 0,
+      uniqueIPs: 0,
+      deviceBreakdown: [],
+      browserBreakdown: []
+    };
+
+    const totalPages = Math.ceil(totalVisitors / limitNum);
+
+    res.json({
+      success: true,
+      data: {
+        visitors: anonymousVisits,
+        summary: {
+          ...summary,
+          dateRange: {
+            start: start.toISOString(),
+            end: end.toISOString()
+          }
+        },
+        pagination: {
+          currentPage: pageNum,
+          totalPages,
+          totalItems: totalVisitors,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1,
+          limit: limitNum
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching anonymous visits:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch anonymous visits data' 
+    });
+  }
+});
+
+// GET /api/analytics/debug - Debug analytics data (admin only)
+router.get('/debug', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    // Get recent analytics entries
+    const recentEntries = await Analytics
+      .find({})
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .populate('userId', 'firstName lastName email role');
+    
+    // Get counts by event type
+    const eventCounts = await Analytics.aggregate([
+      { $group: { _id: '$eventType', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Get user vs anonymous counts
+    const userCounts = await Analytics.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalEvents: { $sum: 1 },
+          authenticatedEvents: { $sum: { $cond: [{ $ne: ['$userId', null] }, 1, 0] } },
+          anonymousEvents: { $sum: { $cond: [{ $eq: ['$userId', null] }, 1, 0] } },
+          uniqueUsers: { $addToSet: '$userId' },
+          uniqueFingerprints: { $addToSet: '$fingerprint' }
+        }
+      },
+      {
+        $project: {
+          totalEvents: 1,
+          authenticatedEvents: 1,
+          anonymousEvents: 1,
+          uniqueUsers: { $size: { $filter: { input: '$uniqueUsers', cond: { $ne: ['$$this', null] } } } },
+          uniqueFingerprints: { $size: { $filter: { input: '$uniqueFingerprints', cond: { $ne: ['$$this', null] } } } }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      debug: {
+        recentEntries,
+        eventCounts,
+        summary: userCounts[0] || {
+          totalEvents: 0,
+          authenticatedEvents: 0,
+          anonymousEvents: 0,
+          uniqueUsers: 0,
+          uniqueFingerprints: 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching debug analytics:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch debug analytics' 
+    });
+  }
+});
+
 // POST /api/analytics/cleanup - Clean up old analytics data (admin only)
 router.post('/cleanup', authenticate, authorize(['admin']), async (req, res) => {
   try {

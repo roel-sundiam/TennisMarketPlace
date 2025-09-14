@@ -241,8 +241,9 @@ const userSchema = new mongoose.Schema({
     },
     deviceFingerprint: {
       type: String,
-      required: true,
-      index: true
+      required: false,
+      index: true,
+      default: null
     },
     userAgent: {
       type: String,

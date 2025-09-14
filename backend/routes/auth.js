@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import CoinTransaction from '../models/CoinTransaction.js';
 import { authenticate } from '../middleware/auth.js';
+import { trackApiUsage } from '../middleware/analytics.js';
 import { 
   extractClientInfo, 
   checkRegistrationLimits, 
@@ -21,7 +22,7 @@ const generateToken = (userId) => {
 };
 
 // POST /api/auth/register - Register new user
-router.post('/register', extractClientInfo, checkRegistrationLimits, logRegistrationAttempt, async (req, res) => {
+router.post('/register', extractClientInfo, checkRegistrationLimits, logRegistrationAttempt, trackApiUsage('user_register'), async (req, res) => {
   try {
     const {
       email,
@@ -57,7 +58,7 @@ router.post('/register', extractClientInfo, checkRegistrationLimits, logRegistra
       isActive: false, // New users require admin approval before access
       registration: {
         ipAddress: req.clientInfo.ipAddress,
-        deviceFingerprint: req.clientInfo.deviceFingerprint,
+        deviceFingerprint: req.clientInfo.deviceFingerprint || null,
         userAgent: req.clientInfo.userAgent,
         registeredAt: new Date(),
         isDuplicateApproved: false,
@@ -104,7 +105,7 @@ router.post('/register', extractClientInfo, checkRegistrationLimits, logRegistra
 });
 
 // POST /api/auth/login - Login user
-router.post('/login', async (req, res) => {
+router.post('/login', trackApiUsage('user_login'), async (req, res) => {
   try {
     const { email, password } = req.body;
 

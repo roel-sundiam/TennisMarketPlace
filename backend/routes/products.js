@@ -3,11 +3,12 @@ import Product from '../models/Product.js';
 import User from '../models/User.js';
 import CoinTransaction from '../models/CoinTransaction.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { trackApiUsage, trackProductInteraction } from '../middleware/analytics.js';
 
 const router = express.Router();
 
 // GET /api/products - Get all products with filtering and pagination
-router.get('/', async (req, res) => {
+router.get('/', trackApiUsage('product_browse'), async (req, res) => {
   try {
     const {
       category = '',
@@ -149,7 +150,7 @@ router.get('/featured', async (req, res) => {
 });
 
 // GET /api/products/:id - Get single product by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', trackProductInteraction('product_view'), async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate('seller', 'firstName lastName rating profilePicture location isVerified phoneNumber email');
@@ -181,7 +182,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/products - Create new product (requires authentication)
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, trackApiUsage('product_create'), async (req, res) => {
   try {
     const {
       title,
@@ -326,7 +327,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // POST /api/products/:id/boost - Boost a product (requires authentication and ownership)
-router.post('/:id/boost', authenticate, async (req, res) => {
+router.post('/:id/boost', authenticate, trackProductInteraction('product_boost'), async (req, res) => {
   try {
     const { duration = 7 } = req.body;
     

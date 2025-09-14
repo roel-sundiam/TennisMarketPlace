@@ -29,27 +29,24 @@ export const checkRegistrationLimits = async (req, res, next) => {
   try {
     const { ipAddress, deviceFingerprint } = req.clientInfo;
 
-    if (!deviceFingerprint) {
-      return res.status(400).json({
-        error: 'Device fingerprint is required for registration security'
+    // Only check device fingerprint if available (optional for desktop users)
+    if (deviceFingerprint) {
+      const existingByFingerprint = await User.findOne({
+        'registration.deviceFingerprint': deviceFingerprint,
+        'registration.isDuplicateApproved': false
       });
-    }
 
-    const existingByFingerprint = await User.findOne({
-      'registration.deviceFingerprint': deviceFingerprint,
-      'registration.isDuplicateApproved': false
-    });
-
-    if (existingByFingerprint) {
-      return res.status(409).json({
-        error: 'A user account already exists from this device. Multiple accounts per device are not allowed.',
-        code: 'DEVICE_LIMIT_EXCEEDED',
-        existingUser: {
-          email: existingByFingerprint.email,
-          createdAt: existingByFingerprint.createdAt,
-          isActive: existingByFingerprint.isActive
-        }
-      });
+      if (existingByFingerprint) {
+        return res.status(409).json({
+          error: 'A user account already exists from this device. Multiple accounts per device are not allowed.',
+          code: 'DEVICE_LIMIT_EXCEEDED',
+          existingUser: {
+            email: existingByFingerprint.email,
+            createdAt: existingByFingerprint.createdAt,
+            isActive: existingByFingerprint.isActive
+          }
+        });
+      }
     }
 
     const usersFromIP = await User.countDocuments({
