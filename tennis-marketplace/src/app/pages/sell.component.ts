@@ -562,11 +562,7 @@ export class SellComponent implements OnInit {
       }
     });
 
-    // Check if user has remaining listings
-    const user = this.currentUser();
-    if (user && user.subscription?.remainingListings === 0) {
-      console.warn('User has no remaining listings');
-    }
+    // Removed listing limit check - all users can create unlimited listings
 
     // Load cities for dropdown
     this.loadCities();
@@ -580,12 +576,7 @@ export class SellComponent implements OnInit {
       return;
     }
 
-    // Check if user has remaining listings
-    const user = this.currentUser();
-    if (user && user.subscription?.remainingListings === 0) {
-      this.notificationService.warning('Listing limit reached', 'You have no remaining listings. Please upgrade your subscription.');
-      return;
-    }
+    // Removed listing limit check - all users can create unlimited listings
 
     if (this.listingForm.valid) {
       this.isSubmitting.set(true);
