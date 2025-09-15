@@ -13,15 +13,21 @@ import { AuthService } from '../services/auth.service';
       <div class="max-w-md w-full space-y-4 sm:space-y-8">
         <!-- Header -->
         <div class="text-center">
-          <a routerLink="/" class="inline-flex items-center gap-2 mb-6">
-            <div class="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-              <span class="text-white font-bold text-lg">🎾</span>
+          <a routerLink="/" class="inline-flex items-center gap-3 mb-6 hover:scale-105 transition-all duration-200 group">
+            <div class="relative">
+              <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-green-300 group-hover:bg-green-600/20 transition-all duration-200 p-1">
+                <img src="/assets/logo.png" alt="Baseline Gearhub" class="w-full h-full object-contain">
+              </div>
+              <div class="absolute -inset-1 bg-green-600/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-sm"></div>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">TennisMarket</h1>
+            <div class="flex flex-col">
+              <h1 class="text-2xl font-bold text-gray-900 group-hover:text-green-700 transition-colors duration-200">Baseline Gearhub</h1>
+              <span class="text-xs text-gray-600 group-hover:text-green-600 transition-colors duration-200">Your hub for tennis & pickleball gear</span>
+            </div>
           </a>
           <h2 class="text-3xl font-bold text-gray-900">Welcome back</h2>
           <p class="mt-2 text-sm text-gray-600">
-            Sign in to your account to start trading tennis gear
+            Sign in to your account to start trading tennis & pickleball gear
           </p>
         </div>
 
@@ -106,20 +112,6 @@ import { AuthService } from '../services/auth.service';
             </button>
           </form>
 
-          <!-- Account Info -->
-          <div class="mt-6 pt-6 border-t border-gray-200">
-            <p class="text-center text-sm text-gray-600 mb-4">Test Accounts:</p>
-            <div class="space-y-2 text-xs">
-              <div class="flex justify-between bg-blue-50 p-2 rounded">
-                <span>Admin: admin@tennis.com</span>
-                <span>Password: admin123</span>
-              </div>
-              <div class="flex justify-between bg-gray-50 p-2 rounded">
-                <span>User: sundiamr@aol.com</span>
-                <span>Password: admin123</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Register Link -->
