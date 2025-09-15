@@ -3807,11 +3807,11 @@ export class AdminComponent implements OnInit {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      console.log('🔗 Making request to:', `http://localhost:5000/api/analytics/user-visits?${params.toString()}`);
+      console.log('🔗 Making request to:', `${environment.apiUrl}/analytics/user-visits?${params.toString()}`);
       console.log('🎫 Using token:', token ? `${token.substring(0, 20)}...` : 'null');
-      
+
       const response = await firstValueFrom(
-        this.http.get<any>(`http://localhost:5000/api/analytics/user-visits?${params.toString()}`, { headers })
+        this.http.get<any>(`${environment.apiUrl}/analytics/user-visits?${params.toString()}`, { headers })
       );
 
       console.log('📥 Raw response:', response);
@@ -3856,11 +3856,11 @@ export class AdminComponent implements OnInit {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      console.log('🔗 Making request to:', `http://localhost:5000/api/analytics/anonymous-visits?${params.toString()}`);
+      console.log('🔗 Making request to:', `${environment.apiUrl}/analytics/anonymous-visits?${params.toString()}`);
       console.log('🎫 Using token:', token ? `${token.substring(0, 20)}...` : 'null');
-      
+
       const response = await firstValueFrom(
-        this.http.get<any>(`http://localhost:5000/api/analytics/anonymous-visits?${params.toString()}`, { headers })
+        this.http.get<any>(`${environment.apiUrl}/analytics/anonymous-visits?${params.toString()}`, { headers })
       );
 
       console.log('📥 Raw anonymous response:', response);
@@ -4080,7 +4080,7 @@ Report Details:
       };
 
       await firstValueFrom(
-        this.http.put(`http://localhost:5000/api/reports/${report._id}/resolve`, payload, { headers })
+        this.http.put(`${environment.apiUrl}/reports/${report._id}/resolve`, payload, { headers })
       );
 
       this.modalService.success('Report Resolved', 'Report has been marked as resolved.');
@@ -4141,7 +4141,7 @@ Report Details:
       };
 
       await firstValueFrom(
-        this.http.put(`http://localhost:5000/api/reports/${report._id}/resolve`, reportPayload, { headers })
+        this.http.put(`${environment.apiUrl}/reports/${report._id}/resolve`, reportPayload, { headers })
       );
 
       this.modalService.success('User Suspended', `User has been suspended for ${duration} hours and the report has been resolved.`);
