@@ -1,0 +1,2 @@
+# This file ensures the public directory is tracked by git
+# The uploads folder will be created automatically when files are uploaded

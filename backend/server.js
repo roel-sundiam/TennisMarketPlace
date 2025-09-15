@@ -76,8 +76,8 @@ app.use(cors(corsOptions));
 // Analytics tracking middleware (before routes)
 app.use(trackPageView);
 
-// Serve uploaded files statically
-app.use('/uploads', express.static('uploads'));
+// Serve static files from public directory
+app.use('/uploads', express.static('public/uploads'));
 
 // Apply JSON and URL encoding middleware to specific routes only
 const jsonMiddleware = express.json({ 

@@ -3717,7 +3717,7 @@ export class AdminComponent implements OnInit {
 
       // Load all reports
       const reportsResponse = await firstValueFrom(
-        this.http.get<any>(`${environment.apiUrl}/reports', { headers })
+        this.http.get<any>(`${environment.apiUrl}/reports`, { headers })
       );
 
       this.allReportsData.set(reportsResponse.reports || []);
@@ -3750,8 +3750,8 @@ export class AdminComponent implements OnInit {
 
       // Fetch analytics stats and real-time data
       const [statsResponse, realtimeResponse] = await Promise.all([
-        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/analytics/stats?excludeAdmin=true', { headers })),
-        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/analytics/realtime?excludeAdmin=true', { headers }))
+        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/analytics/stats?excludeAdmin=true`, { headers })),
+        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/analytics/realtime?excludeAdmin=true`, { headers }))
       ]);
 
       if (statsResponse.success && realtimeResponse.success) {

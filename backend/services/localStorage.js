@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Base uploads directory
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+// Base uploads directory inside public folder
+const UPLOADS_DIR = path.join(__dirname, '..', 'public', 'uploads');
 
 // Ensure uploads directory exists
 const ensureUploadsDir = async () => {
