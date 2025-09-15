@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -77,7 +79,10 @@ app.use(cors(corsOptions));
 app.use(trackPageView);
 
 // Serve static files from public directory
-app.use('/uploads', express.static('public/uploads'));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // Apply JSON and URL encoding middleware to specific routes only
 const jsonMiddleware = express.json({ 
