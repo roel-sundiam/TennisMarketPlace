@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface AdminProduct {
   _id: string;
@@ -131,7 +132,7 @@ export interface ProductsResponse {
 export class AdminService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
-  private readonly API_BASE = 'http://localhost:5000/api';
+  private readonly API_BASE = environment.apiUrl;
   
   isLoading = signal<boolean>(false);
 

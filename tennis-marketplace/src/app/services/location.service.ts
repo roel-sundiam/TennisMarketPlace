@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface LocationApiResponse {
   success: boolean;
@@ -19,7 +20,7 @@ export interface LocationData {
   providedIn: 'root'
 })
 export class LocationService {
-  private apiUrl = 'http://localhost:5000/api/locations';
+  private apiUrl = `${environment.apiUrl}/locations`;
   
   // Cache for better performance
   private citiesCache = signal<string[]>([]);

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface AnalyticsEvent {
   eventType: string;
@@ -80,7 +81,7 @@ export class AnalyticsService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
   
-  private apiUrl = 'http://localhost:5000/api/analytics';
+  private apiUrl = `${environment.apiUrl}/analytics`;
   private sessionId: string;
   private fingerprint: string;
   private pageLoadTime: number = Date.now();

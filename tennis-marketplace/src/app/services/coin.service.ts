@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface CoinBalance {
   balance: number;
@@ -75,7 +76,7 @@ export interface PurchaseResult {
   providedIn: 'root'
 })
 export class CoinService {
-  private baseUrl = 'http://localhost:5000/api';
+  private baseUrl = environment.apiUrl;
   private coinBalanceSubject = new BehaviorSubject<CoinBalance>({
     balance: 0,
     totalEarned: 0,

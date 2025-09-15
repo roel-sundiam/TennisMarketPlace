@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface Product {
   _id: string;
@@ -139,7 +140,7 @@ export interface CreateProductRequest {
   providedIn: 'root'
 })
 export class ProductService {
-  private readonly API_BASE = 'http://localhost:5000/api/products';
+  private readonly API_BASE = `${environment.apiUrl}/products`;
   
   // Signals for state management
   isLoading = signal<boolean>(false);
@@ -205,7 +206,7 @@ export class ProductService {
       params = params.append('status', status);
     }
     
-    return this.http.get<ProductsResponse>('http://localhost:5000/api/users/me/products', {
+    return this.http.get<ProductsResponse>(`${environment.apiUrl}/users/me/products`, {
       headers: this.authService.getAuthHeaders(),
       params
     });
@@ -222,21 +223,21 @@ export class ProductService {
       hasPrev: boolean;
     };
   }> {
-    return this.http.get<any>('http://localhost:5000/api/users/me/favorites', {
+    return this.http.get<any>(`${environment.apiUrl}/users/me/favorites`, {
       headers: this.authService.getAuthHeaders()
     });
   }
 
   // Add product to favorites
   addToFavorites(productId: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`http://localhost:5000/api/users/favorites/${productId}`, {}, {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/users/favorites/${productId}`, {}, {
       headers: this.authService.getAuthHeaders()
     });
   }
 
   // Remove product from favorites
   removeFromFavorites(productId: string): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`http://localhost:5000/api/users/favorites/${productId}`, {
+    return this.http.delete<{ message: string }>(`${environment.apiUrl}/users/favorites/${productId}`, {
       headers: this.authService.getAuthHeaders()
     });
   }

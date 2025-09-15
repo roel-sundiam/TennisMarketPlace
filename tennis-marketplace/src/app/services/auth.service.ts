@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { map, tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface User {
   _id: string;
@@ -70,7 +71,7 @@ export interface AuthResponse {
 })
 export class AuthService {
   private static instanceCount = 0;
-  private readonly API_BASE = 'http://localhost:5000/api';
+  private readonly API_BASE = environment.apiUrl;
   private readonly TOKEN_KEY = 'tennis-marketplace-token';
   
   // Signals for reactive state management
