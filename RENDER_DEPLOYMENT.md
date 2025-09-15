@@ -11,14 +11,29 @@ This guide explains how to deploy the Tennis Marketplace application to Render.
 
 ## Deployment Steps
 
-### 1. Connect GitHub Repository
+### 1. Deploy Backend API Service
 
 1. Go to your Render dashboard
-2. Click "New +" and select "Blueprint"
+2. Click "New +" and select "Web Service"
 3. Connect your GitHub account and select this repository
-4. Render will automatically detect the `render.yaml` file
+4. Configure the service:
+   - **Name**: `tennis-marketplace-api`
+   - **Root Directory**: `backend`
+   - **Runtime**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
 
-### 2. Set Environment Variables
+### 2. Deploy Frontend Service
+
+1. Click "New +" and select "Static Site"
+2. Connect the same GitHub repository
+3. Configure the service:
+   - **Name**: `tennis-marketplace-frontend`
+   - **Root Directory**: `tennis-marketplace`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist/baseline-gearhub`
+
+### 3. Set Environment Variables
 
 #### Backend Service Environment Variables
 
@@ -37,11 +52,11 @@ Set these in the Render dashboard for your `tennis-marketplace-api` service:
 
 **Auto-configured by Render:**
 - `PORT`: Automatically set by Render
-- `FRONTEND_URL`: Automatically linked to frontend service
+- `FRONTEND_URL`: Set this to your frontend service URL (e.g., `https://tennis-marketplace-frontend.onrender.com`)
 
 #### Frontend Service Environment Variables
 
-These are automatically configured in the build process.
+The frontend is a static site, so environment variables are handled during build time. You'll need to update the API URL in `tennis-marketplace/src/environments/environment.prod.ts` to match your backend service URL.
 
 ### 3. Database Setup
 
@@ -55,12 +70,19 @@ These are automatically configured in the build process.
 2. You'll need to modify the backend to use PostgreSQL instead of MongoDB
 3. Install `pg` package and update the database connection code
 
-### 4. Deploy
+### 4. Update API URL and Deploy
 
-1. Commit all changes to your GitHub repository
-2. Push to the main branch
-3. Render will automatically start the deployment
-4. Monitor the build logs in the Render dashboard
+1. After your backend service is deployed, note its URL (e.g., `https://tennis-marketplace-api.onrender.com`)
+2. Update `tennis-marketplace/src/environments/environment.prod.ts` with your actual backend URL:
+   ```typescript
+   export const environment = {
+     production: true,
+     apiUrl: 'https://your-actual-backend-url.onrender.com/api'
+   };
+   ```
+3. Commit and push this change
+4. Both services will automatically redeploy
+5. Monitor the build logs in the Render dashboard
 
 ## Service URLs
 
@@ -72,10 +94,19 @@ After deployment, your services will be available at:
 
 ## Configuration Files Created
 
-- `render.yaml`: Main deployment configuration
+- `render.yaml`: Blueprint configuration (optional - can use Web Service approach instead)
 - `tennis-marketplace/src/environments/environment.prod.ts`: Production environment settings
 - `backend/.env.production`: Production environment template
 - `backend/health.js`: Health check endpoint
+
+## Alternative: Blueprint Deployment
+
+If you prefer to use the Blueprint approach instead of individual Web Services:
+
+1. Click "New +" and select "Blueprint"
+2. Connect your GitHub repository
+3. Render will automatically detect the `render.yaml` file and create both services
+4. This approach is faster but gives you less control over individual service settings
 
 ## Troubleshooting
 

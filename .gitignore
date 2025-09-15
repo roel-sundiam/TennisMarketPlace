@@ -158,3 +158,5 @@ backend/delete-all-products.js
 backend/delete-non-admin-users.js
 backend/fix-old-users.js
 backend/reset-sundiamr-password.js
+# Local Netlify folder
+.netlify
