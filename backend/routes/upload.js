@@ -1,14 +1,14 @@
 import express from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
-import { 
-  uploadToLocalStorage, 
-  deleteFromLocalStorage,
-  generateFileName, 
-  validateImageFile, 
+import {
+  uploadToSupabaseStorage,
+  deleteFromSupabaseStorage,
+  generateFileName,
+  validateImageFile,
   processImageBuffer,
-  getUploadsInfo
-} from '../services/localStorage.js';
+  getSupabaseStorageInfo
+} from '../services/supabaseStorage.js';
 
 const router = express.Router();
 
@@ -50,8 +50,8 @@ router.post('/image', authenticate, upload.single('image'), async (req, res) => 
     // Process image (resize/optimize if needed)
     const processedBuffer = processImageBuffer(req.file.buffer);
     
-    // Upload to local storage
-    const uploadResult = await uploadToLocalStorage(
+    // Upload to Supabase storage
+    const uploadResult = await uploadToSupabaseStorage(
       processedBuffer,
       fileName,
       req.file.mimetype,
@@ -68,7 +68,7 @@ router.post('/image', authenticate, upload.single('image'), async (req, res) => 
   } catch (error) {
     console.error('Error uploading image:', error);
     
-    if (error.message.includes('local storage')) {
+    if (error.message.includes('Supabase')) {
       return res.status(503).json({ error: 'Image storage service unavailable' });
     }
     
@@ -95,7 +95,7 @@ router.post('/images', authenticate, upload.array('images', 10), async (req, res
         const fileName = generateFileName(file.originalname, req.user._id.toString());
         const processedBuffer = processImageBuffer(file.buffer);
         
-        return await uploadToLocalStorage(
+        return await uploadToSupabaseStorage(
           processedBuffer,
           fileName,
           file.mimetype,
@@ -141,7 +141,7 @@ router.delete('/image/:fileName', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'You can only delete your own files' });
     }
 
-    await deleteFromLocalStorage(fileName, folder);
+    await deleteFromSupabaseStorage(fileName, folder);
 
     res.json({ message: 'Image deleted successfully' });
   } catch (error) {
@@ -158,25 +158,27 @@ router.delete('/image/:fileName', authenticate, async (req, res) => {
 // GET /api/upload/health - Check upload service health
 router.get('/health', async (req, res) => {
   try {
-    const uploadsInfo = await getUploadsInfo();
-    
+    const storageInfo = await getSupabaseStorageInfo();
+
     res.json({
       status: 'OK',
-      storage: 'local filesystem',
-      uploadsDirectory: uploadsInfo?.uploadsDir,
-      folders: uploadsInfo?.folders,
+      storage: 'Supabase Storage',
+      bucket: storageInfo.bucket,
+      connected: storageInfo.connected,
+      filesInProducts: storageInfo.filesInProducts,
+      supabaseUrl: storageInfo.supabaseUrl,
       maxFileSize: '5MB',
       allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
       maxFiles: 10
     });
   } catch (error) {
     res.json({
-      status: 'OK',
-      storage: 'local filesystem',
+      status: 'ERROR',
+      storage: 'Supabase Storage',
       maxFileSize: '5MB',
       allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
       maxFiles: 10,
-      warning: 'Could not check uploads directory'
+      error: 'Could not connect to Supabase Storage'
     });
   }
 });
