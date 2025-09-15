@@ -56,12 +56,12 @@ const getAllowedOrigins = () => {
   ];
 
   const productionOrigins = [
-    process.env.FRONTEND_URL
+    process.env.FRONTEND_URL,
+    'https://tennis-marketplace.netlify.app'  // Explicit production frontend URL
   ].filter(Boolean);
 
-  return process.env.NODE_ENV === 'production'
-    ? productionOrigins
-    : [...developmentOrigins, ...productionOrigins];
+  // Always allow both development and production origins for flexibility
+  return [...developmentOrigins, ...productionOrigins];
 };
 
 const corsOptions = {
