@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 // Initialize Supabase client
-const supabaseUrl = 'https://tzetbsokiwdcxpxjklmk.supabase.co';
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6ZXRic29raXdkY3hweGprbG1rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzkyNzIxOSwiZXhwIjoyMDczNTAzMjE5fQ.-m0R-JIjkYppmIaY-J0qbAQbDqW1xuNkbv5QutAIfxU';
+const supabaseUrl = process.env.SUPABASE_URL || 'https://tzetbsokiwdcxpxjklmk.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6ZXRic29raXdkY3hweGprbG1rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzkyNzIxOSwiZXhwIjoyMDczNTAzMjE5fQ.-m0R-JIjkYppmIaY-J0qbAQbDqW1xuNkbv5QutAIfxU';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
@@ -13,7 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 // Storage bucket name
-const STORAGE_BUCKET = 'product-images';
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'product-images';
 
 // Upload file to Supabase Storage
 export const uploadToSupabaseStorage = async (buffer, fileName, contentType, folder = 'products') => {
