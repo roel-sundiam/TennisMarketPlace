@@ -363,4 +363,105 @@ router.get('/suspicious', authenticate, authorize(['admin']), async (req, res) =
   }
 });
 
+// GET /api/admin/coins/balances - Get all users' coin balances
+router.get('/balances', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { page = 1, limit = 50, sortBy = 'balance', sortOrder = 'desc', role = '', search = '' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build query
+    const query = { isActive: true };
+    if (role) {
+      query.role = role;
+    }
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort options
+    const sortOptions = {};
+    if (sortBy === 'balance') {
+      sortOptions['coins.balance'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'totalEarned') {
+      sortOptions['coins.totalEarned'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'totalSpent') {
+      sortOptions['coins.totalSpent'] = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'name') {
+      sortOptions.firstName = sortOrder === 'desc' ? -1 : 1;
+      sortOptions.lastName = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sortOptions.createdAt = -1; // Default sort
+    }
+
+    // Get users with coin balances
+    const users = await User.find(query)
+      .select('firstName lastName email role coins createdAt profilePicture location')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await User.countDocuments(query);
+
+    // Calculate summary statistics
+    const summaryStats = await User.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalBalance: { $sum: '$coins.balance' },
+          totalEarned: { $sum: '$coins.totalEarned' },
+          totalSpent: { $sum: '$coins.totalSpent' },
+          averageBalance: { $avg: '$coins.balance' },
+          maxBalance: { $max: '$coins.balance' },
+          minBalance: { $min: '$coins.balance' },
+          userCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Format user data
+    const formattedUsers = users.map(user => ({
+      id: user._id,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture,
+      location: user.location,
+      coins: {
+        balance: user.coins.balance,
+        totalEarned: user.coins.totalEarned,
+        totalSpent: user.coins.totalSpent
+      },
+      joinedAt: user.createdAt
+    }));
+
+    res.json({
+      users: formattedUsers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalUsers: total,
+        hasNext: skip + users.length < total,
+        hasPrev: parseInt(page) > 1
+      },
+      summary: summaryStats[0] || {
+        totalBalance: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        averageBalance: 0,
+        maxBalance: 0,
+        minBalance: 0,
+        userCount: 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching coin balances:', error);
+    res.status(500).json({ error: 'Failed to fetch coin balances' });
+  }
+});
+
 export default router;

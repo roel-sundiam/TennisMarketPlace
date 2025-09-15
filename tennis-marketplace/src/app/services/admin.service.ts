@@ -311,6 +311,30 @@ export class AdminService {
     });
   }
 
+  // Get all users' coin balances
+  getCoinBalances(params: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
+    role?: string;
+    search?: string;
+  } = {}): Observable<any> {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value.toString());
+      }
+    });
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `${this.API_BASE}/admin/coins/balances?${queryString}` : `${this.API_BASE}/admin/coins/balances`;
+    
+    return this.http.get(url, {
+      headers: this.getAuthHeaders()
+    });
+  }
+
   // Get user coin details
   getUserCoinDetails(userId: string, page: number = 1, limit: number = 20): Observable<UserCoinDetails> {
     return this.http.get<UserCoinDetails>(`${this.API_BASE}/admin/coins/user/${userId}?page=${page}&limit=${limit}`, {

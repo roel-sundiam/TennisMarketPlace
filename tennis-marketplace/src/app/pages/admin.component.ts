@@ -1479,6 +1479,141 @@ export interface AnonymousVisitsData {
                   </div>
                 </div>
 
+                <!-- Coin Balance Report -->
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                  <div class="flex items-center justify-between mb-6">
+                    <h4 class="text-lg font-semibold text-gray-900">Coin Balance Report</h4>
+                    <div class="flex items-center space-x-4">
+                      <select 
+                        (change)="filterCoinBalancesByRole($any($event.target).value)"
+                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">All Roles</option>
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <input 
+                        type="text"
+                        placeholder="Search users..."
+                        (input)="searchCoinBalances($any($event.target).value)"
+                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48">
+                    </div>
+                  </div>
+
+                  <!-- Summary Statistics -->
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4">
+                      <p class="text-sm font-medium text-blue-600">Total Balance</p>
+                      <p class="text-2xl font-bold text-blue-900">{{ coinBalancesData().summary.totalBalance }}</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4">
+                      <p class="text-sm font-medium text-green-600">Total Earned</p>
+                      <p class="text-2xl font-bold text-green-900">{{ coinBalancesData().summary.totalEarned }}</p>
+                    </div>
+                    <div class="bg-red-50 rounded-lg p-4">
+                      <p class="text-sm font-medium text-red-600">Total Spent</p>
+                      <p class="text-2xl font-bold text-red-900">{{ coinBalancesData().summary.totalSpent }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                      <p class="text-sm font-medium text-gray-600">Avg Balance</p>
+                      <p class="text-2xl font-bold text-gray-900">{{ (coinBalancesData().summary.averageBalance || 0).toFixed(0) }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Users Table -->
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                      <thead class="bg-gray-50">
+                        <tr>
+                          <th (click)="sortCoinBalances('name')" 
+                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                            Name
+                            @if (coinBalanceFilters().sortBy === 'name') {
+                              <span class="ml-1">{{ coinBalanceFilters().sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                            }
+                          </th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                          <th (click)="sortCoinBalances('balance')" 
+                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                            Current Balance
+                            @if (coinBalanceFilters().sortBy === 'balance') {
+                              <span class="ml-1">{{ coinBalanceFilters().sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                            }
+                          </th>
+                          <th (click)="sortCoinBalances('totalEarned')" 
+                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                            Total Earned
+                            @if (coinBalanceFilters().sortBy === 'totalEarned') {
+                              <span class="ml-1">{{ coinBalanceFilters().sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                            }
+                          </th>
+                          <th (click)="sortCoinBalances('totalSpent')" 
+                              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                            Total Spent
+                            @if (coinBalanceFilters().sortBy === 'totalSpent') {
+                              <span class="ml-1">{{ coinBalanceFilters().sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                            }
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-gray-200">
+                        @for (user of coinBalancesData().users; track user.id) {
+                          <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <div class="flex items-center">
+                                <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+                              </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.email }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <span [class]="'inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + (user.role === 'admin' ? 'bg-purple-100 text-purple-800' : user.role === 'seller' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')">
+                                {{ user.role | titlecase }}
+                              </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" 
+                                [class]="user.coins.balance >= 0 ? 'text-green-600' : 'text-red-600'">
+                              {{ user.coins.balance }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.coins.totalEarned }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.coins.totalSpent }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Pagination -->
+                  @if (coinBalancesData().pagination.totalPages > 1) {
+                    <div class="flex items-center justify-between mt-6">
+                      <div class="text-sm text-gray-700">
+                        Showing {{ coinBalancesData().users.length }} of {{ coinBalancesData().pagination.totalUsers }} users
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <button 
+                          (click)="prevCoinBalancePage()"
+                          [disabled]="!coinBalancesData().pagination.hasPrev"
+                          class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                          Previous
+                        </button>
+                        <span class="px-3 py-2 text-sm text-gray-700">
+                          Page {{ coinBalancesData().pagination.currentPage }} of {{ coinBalancesData().pagination.totalPages }}
+                        </span>
+                        <button 
+                          (click)="nextCoinBalancePage()"
+                          [disabled]="!coinBalancesData().pagination.hasNext"
+                          class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+
                 <!-- Coin Management Actions -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <!-- Award Coins -->
@@ -1486,14 +1621,17 @@ export interface AnonymousVisitsData {
                     <h4 class="text-lg font-semibold text-gray-900 mb-4">Award Coins</h4>
                     <form (ngSubmit)="awardCoins()" class="space-y-4">
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-                        <input 
-                          [(ngModel)]="awardForm.userId" 
-                          name="awardUserId"
-                          type="text" 
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select User</label>
+                        <select 
+                          [(ngModel)]="selectedAwardUser"
+                          name="awardUser"
                           class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                          placeholder="Enter user ID"
                           required>
+                          <option [ngValue]="null">Choose a user...</option>
+                          @for (user of allUsersForDropdown(); track user.id) {
+                            <option [ngValue]="user">{{ user.name }} ({{ user.email }}) - {{ user.coins.balance }} coins</option>
+                          }
+                        </select>
                       </div>
                       <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
@@ -1530,14 +1668,17 @@ export interface AnonymousVisitsData {
                     <h4 class="text-lg font-semibold text-gray-900 mb-4">Deduct Coins</h4>
                     <form (ngSubmit)="deductCoins()" class="space-y-4">
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-                        <input 
-                          [(ngModel)]="deductForm.userId" 
-                          name="deductUserId"
-                          type="text" 
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select User</label>
+                        <select 
+                          [(ngModel)]="selectedDeductUser"
+                          name="deductUser"
                           class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                          placeholder="Enter user ID"
                           required>
+                          <option [ngValue]="null">Choose a user...</option>
+                          @for (user of allUsersForDropdown(); track user.id) {
+                            <option [ngValue]="user">{{ user.name }} ({{ user.email }}) - {{ user.coins.balance }} coins</option>
+                          }
+                        </select>
                       </div>
                       <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
@@ -2442,6 +2583,42 @@ export class AdminComponent implements OnInit {
 
   selectedUser = signal<any>(null);
   userCoinDetails = signal<UserCoinDetails | null>(null);
+  
+  // New coin balance report data
+  coinBalancesData = signal<any>({
+    users: [],
+    pagination: {
+      currentPage: 1,
+      totalPages: 0,
+      totalUsers: 0,
+      hasNext: false,
+      hasPrev: false
+    },
+    summary: {
+      totalBalance: 0,
+      totalEarned: 0,
+      totalSpent: 0,
+      averageBalance: 0,
+      maxBalance: 0,
+      minBalance: 0,
+      userCount: 0
+    }
+  });
+  
+  // All users list for dropdown functionality
+  allUsersForDropdown = signal<any[]>([]);
+  selectedAwardUser = signal<any>(null);
+  selectedDeductUser = signal<any>(null);
+  
+  // Filter and search for coin balances
+  coinBalanceFilters = signal({
+    page: 1,
+    limit: 20,
+    sortBy: 'balance',
+    sortOrder: 'desc',
+    role: '',
+    search: ''
+  });
 
   // User approval management data
   pendingUsersData = signal<any[]>([]);
@@ -2770,6 +2947,10 @@ export class AdminComponent implements OnInit {
 
       this.loadingMessage.set('Loading coin data...');
       await this.loadCoinStats();
+      this.loadingMessage.set('Loading coin balances...');
+      await this.loadCoinBalances();
+      this.loadingMessage.set('Loading users for dropdown...');
+      await this.loadUsersForDropdown();
       this.loadingMessage.set('Loading user activity analytics...');
       await this.loadUserActivityStats();
       this.loadingMessage.set('Loading user visits data...');
@@ -2932,22 +3113,102 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  private loadCoinBalances(): void {
+    const filters = this.coinBalanceFilters();
+    this.adminService.getCoinBalances(filters).subscribe({
+      next: (data) => {
+        this.coinBalancesData.set(data);
+        console.log('✅ Coin balances loaded:', data);
+      },
+      error: (error) => {
+        console.error('❌ Failed to load coin balances:', error);
+      }
+    });
+  }
+
+  private loadUsersForDropdown(): void {
+    this.adminService.getAllUsers({ limit: 1000 }).subscribe({
+      next: (response) => {
+        const users = response.users.map((user: any) => ({
+          id: user._id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          role: user.role,
+          coins: user.coins || { balance: 0 }
+        }));
+        this.allUsersForDropdown.set(users);
+        console.log('✅ Users for dropdown loaded:', users.length, 'users');
+      },
+      error: (error) => {
+        console.error('❌ Failed to load users for dropdown:', error);
+      }
+    });
+  }
+
+  // Coin Balance Report Management Methods
+  
+  updateCoinBalanceFilters(updates: Partial<{
+    page: number;
+    limit: number;
+    sortBy: string;
+    sortOrder: string;
+    role: string;
+    search: string;
+  }>): void {
+    this.coinBalanceFilters.update(current => ({ ...current, ...updates }));
+    this.loadCoinBalances();
+  }
+
+  sortCoinBalances(sortBy: string): void {
+    const current = this.coinBalanceFilters();
+    const newOrder = current.sortBy === sortBy && current.sortOrder === 'desc' ? 'asc' : 'desc';
+    this.updateCoinBalanceFilters({ sortBy, sortOrder: newOrder });
+  }
+
+  filterCoinBalancesByRole(role: string): void {
+    this.updateCoinBalanceFilters({ role, page: 1 });
+  }
+
+  searchCoinBalances(search: string): void {
+    this.updateCoinBalanceFilters({ search, page: 1 });
+  }
+
+  goToCoinBalancePage(page: number): void {
+    this.updateCoinBalanceFilters({ page });
+  }
+
+  nextCoinBalancePage(): void {
+    const data = this.coinBalancesData();
+    if (data.pagination.hasNext) {
+      this.goToCoinBalancePage(data.pagination.currentPage + 1);
+    }
+  }
+
+  prevCoinBalancePage(): void {
+    const data = this.coinBalancesData();
+    if (data.pagination.hasPrev) {
+      this.goToCoinBalancePage(data.pagination.currentPage - 1);
+    }
+  }
+
   awardCoins(): void {
-    if (!this.awardForm.userId || !this.awardForm.amount || !this.awardForm.description) {
-      this.modalService.warning('Missing Information', 'Please fill in all required fields before awarding coins.');
+    const selectedUser = this.selectedAwardUser();
+    if (!selectedUser || !this.awardForm.amount || !this.awardForm.description) {
+      this.modalService.warning('Missing Information', 'Please select a user and fill in all required fields before awarding coins.');
       return;
     }
 
     this.adminService.awardCoins(
-      this.awardForm.userId,
+      selectedUser.id,
       this.awardForm.amount,
       this.awardForm.reason,
       this.awardForm.description
     ).subscribe({
       next: (response) => {
-        this.modalService.success('Coins Awarded', `Successfully awarded ${this.awardForm.amount} coins to user ${this.awardForm.userId}!`);
+        this.modalService.success('Coins Awarded', `Successfully awarded ${this.awardForm.amount} coins to ${selectedUser.name}!`);
         this.resetAwardForm();
         this.loadCoinStats(); // Refresh stats
+        this.loadCoinBalances(); // Refresh coin balances
       },
       error: (error) => {
         console.error('Failed to award coins:', error);
@@ -2957,21 +3218,23 @@ export class AdminComponent implements OnInit {
   }
 
   deductCoins(): void {
-    if (!this.deductForm.userId || !this.deductForm.amount || !this.deductForm.description) {
-      this.modalService.warning('Missing Information', 'Please fill in all required fields before deducting coins.');
+    const selectedUser = this.selectedDeductUser();
+    if (!selectedUser || !this.deductForm.amount || !this.deductForm.description) {
+      this.modalService.warning('Missing Information', 'Please select a user and fill in all required fields before deducting coins.');
       return;
     }
 
     this.adminService.deductCoins(
-      this.deductForm.userId,
+      selectedUser.id,
       this.deductForm.amount,
       this.deductForm.reason,
       this.deductForm.description
     ).subscribe({
       next: (response) => {
-        this.modalService.success('Coins Deducted', `Successfully deducted ${this.deductForm.amount} coins from user ${this.deductForm.userId}!`);
+        this.modalService.success('Coins Deducted', `Successfully deducted ${this.deductForm.amount} coins from ${selectedUser.name}!`);
         this.resetDeductForm();
         this.loadCoinStats(); // Refresh stats
+        this.loadCoinBalances(); // Refresh coin balances
       },
       error: (error) => {
         console.error('Failed to deduct coins:', error);
@@ -2997,6 +3260,7 @@ export class AdminComponent implements OnInit {
       reason: 'admin_award',
       description: ''
     };
+    this.selectedAwardUser.set(null);
   }
 
   private resetDeductForm(): void {
@@ -3006,6 +3270,7 @@ export class AdminComponent implements OnInit {
       reason: 'admin_deduct',
       description: ''
     };
+    this.selectedDeductUser.set(null);
   }
 
   // Verification Management Methods
