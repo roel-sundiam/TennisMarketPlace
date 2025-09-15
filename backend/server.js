@@ -42,16 +42,28 @@ const limiter = rateLimit({
   }
 });
 
-// CORS configuration - Allow frontend ports
-const corsOptions = {
-  origin: [
+// CORS configuration - Allow frontend ports and production URLs
+const getAllowedOrigins = () => {
+  const developmentOrigins = [
     'http://localhost:4200',  // Angular dev server default
     'http://localhost:4202',  // Angular dev server alternate
     'http://localhost:3000',  // Alternative port
     'http://127.0.0.1:4200',
     'http://127.0.0.1:4202',
     'http://127.0.0.1:3000'
-  ],
+  ];
+
+  const productionOrigins = [
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+
+  return process.env.NODE_ENV === 'production'
+    ? productionOrigins
+    : [...developmentOrigins, ...productionOrigins];
+};
+
+const corsOptions = {
+  origin: getAllowedOrigins(),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Fingerprint', 'X-Session-ID']
