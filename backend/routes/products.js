@@ -208,19 +208,15 @@ router.post('/', authenticate, trackApiUsage('product_create'), async (req, res)
     if (!user.subscription) {
       user.subscription = {
         plan: 'free',
-        remainingListings: 3,
+        remainingListings: -1, // Unlimited listings
         remainingBoosts: 0,
         expiresAt: null,
         renewalDate: null
       };
       await user.save();
     }
-    
-    if (user.subscription.remainingListings === 0) {
-      return res.status(400).json({ 
-        error: 'You have reached your listing limit. Please upgrade your subscription.' 
-      });
-    }
+
+    // Removed listing limits - all users can create unlimited listings
 
     const product = new Product({
       title,
@@ -242,11 +238,7 @@ router.post('/', authenticate, trackApiUsage('product_create'), async (req, res)
 
     await product.save();
 
-    // Decrease remaining listings for non-pro users
-    if (user.subscription.remainingListings > 0) {
-      user.subscription.remainingListings -= 1;
-      await user.save();
-    }
+    // Removed: No longer decreasing listing counts - unlimited listings for all users
 
     await product.populate('seller', 'firstName lastName rating profilePicture location isVerified');
 

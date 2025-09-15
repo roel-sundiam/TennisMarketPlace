@@ -41,39 +41,15 @@ interface SelectedImage {
             <!-- User Info -->
             <div *ngIf="currentUser()" class="flex items-center gap-3 text-sm text-gray-600">
               <span>Welcome, {{ currentUser()?.firstName }}!</span>
-              <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                @if (currentUser()?.subscription?.remainingListings === -1) {
-                  Unlimited listings
-                } @else {
-                  {{ currentUser()?.subscription?.remainingListings || 0 }} listings left
-                }
-              </span>
             </div>
           </div>
         </div>
       </header>
 
-      <!-- No Listings Warning -->
-      <div *ngIf="shouldShowNoListingsWarning()" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
-          <div class="text-yellow-600 mb-4">
-            <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-medium text-yellow-800 mb-2">No listings remaining</h3>
-          <p class="text-yellow-700 mb-4">You've used all your available listings for this month. Upgrade your subscription to list more items.</p>
-          <button 
-            type="button"
-            class="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors">
-            Upgrade Subscription
-          </button>
-        </div>
-      </div>
 
 
       <!-- Main Form -->
-      <div *ngIf="shouldShowForm()" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form [formGroup]="listingForm" (ngSubmit)="onSubmit()" class="space-y-8">
           
           <!-- Basic Information -->
@@ -726,27 +702,13 @@ export class SellComponent implements OnInit {
     });
   }
 
+  // Subscription limits removed - all users can create listings
   shouldShowForm(): boolean {
-    const user = this.currentUser();
-    console.log('shouldShowForm check:', {
-      hasUser: !!user,
-      subscription: user?.subscription,
-      remainingListings: user?.subscription?.remainingListings
-    });
-    
-    // Show form if user exists and either:
-    // 1. Has remaining listings > 0, OR
-    // 2. remainingListings is -1 (unlimited), OR  
-    // 3. remainingListings is undefined (default to allowing form)
-    if (!user) return false;
-    
-    const remainingListings = user.subscription?.remainingListings;
-    return remainingListings === undefined || remainingListings > 0 || remainingListings === -1;
+    return !!this.currentUser(); // Just check if user is logged in
   }
 
   shouldShowNoListingsWarning(): boolean {
-    const user = this.currentUser();
-    return !!(user && user.subscription?.remainingListings === 0);
+    return false; // Never show warning
   }
 
   // Image handling methods
