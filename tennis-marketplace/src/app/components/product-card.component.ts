@@ -26,7 +26,7 @@ import { Product } from '../services/product.service';
           [class.opacity-0]="!imageLoaded"
           [class.opacity-100]="imageLoaded"
           (load)="imageLoaded = true"
-          (error)="onImageError()">
+          (error)="onImageError($event)">
           
         <!-- Image Loading Skeleton -->
         <div *ngIf="!imageLoaded" class="absolute inset-0 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-dark-300 dark:to-dark-400 animate-pulse"></div>
@@ -222,11 +222,33 @@ export class ProductCardComponent {
 
   getMainImage(): string {
     if (this.product.images && this.product.images.length > 0) {
-      return typeof this.product.images[0] === 'string' 
-        ? this.product.images[0] 
+      const imageUrl = typeof this.product.images[0] === 'string'
+        ? this.product.images[0]
         : this.product.images[0].url || '';
+
+      // If image URL exists, return it
+      if (imageUrl) {
+        return imageUrl;
+      }
     }
-    return 'https://images.unsplash.com/photo-1542144612-1c93f9eac579?w=400&h=300&fit=crop';
+
+    // Fallback to category-specific placeholder from Unsplash
+    return this.getCategoryPlaceholder();
+  }
+
+  private getCategoryPlaceholder(): string {
+    const category = this.product.category?.toLowerCase() || 'general';
+    const placeholders: {[key: string]: string} = {
+      'racquets': 'https://images.unsplash.com/photo-1544966503-7a5e6b2c1c3d?w=400&h=400&fit=crop',
+      'strings': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
+      'shoes': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop',
+      'bags': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop',
+      'balls': 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=400&h=400&fit=crop',
+      'apparel': 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=400&fit=crop',
+      'accessories': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop'
+    };
+
+    return placeholders[category] || 'https://images.unsplash.com/photo-1542144612-1c93f9eac579?w=400&h=400&fit=crop';
   }
 
   getSellerName(): string {
@@ -310,9 +332,16 @@ export class ProductCardComponent {
     console.log('Quick contact for product:', this.product.title);
   }
   
-  onImageError(): void {
+  onImageError(event: Event): void {
     // Handle image loading errors with fallback
-    console.log('Image failed to load for product:', this.product.title);
+    console.warn('Image failed to load for product:', this.product.title);
+
+    const img = event.target as HTMLImageElement;
+    if (img && img.src !== this.getCategoryPlaceholder()) {
+      // Set fallback image
+      img.src = this.getCategoryPlaceholder();
+      console.log('Applied fallback image for product:', this.product.title);
+    }
   }
   
   // Utility methods for enhanced styling

@@ -1441,11 +1441,32 @@ export class BrowseComponent implements OnInit, OnDestroy {
 
   getMainImageUrl(product: Product): string {
     if (product.images && product.images.length > 0) {
-      return typeof product.images[0] === 'string' 
-        ? product.images[0] 
-        : product.images[0].url;
+      const imageUrl = typeof product.images[0] === 'string'
+        ? product.images[0]
+        : product.images[0].url || '';
+
+      if (imageUrl) {
+        return imageUrl;
+      }
     }
-    return 'https://images.unsplash.com/photo-1542144612-1c93f9eac579?w=400&h=300&fit=crop';
+
+    // Category-specific fallback images
+    return this.getCategoryPlaceholder(product.category);
+  }
+
+  private getCategoryPlaceholder(category?: string): string {
+    const categoryLower = category?.toLowerCase() || 'general';
+    const placeholders: {[key: string]: string} = {
+      'racquets': 'https://images.unsplash.com/photo-1544966503-7a5e6b2c1c3d?w=400&h=400&fit=crop',
+      'strings': 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
+      'shoes': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop',
+      'bags': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop',
+      'balls': 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=400&h=400&fit=crop',
+      'apparel': 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=400&fit=crop',
+      'accessories': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop'
+    };
+
+    return placeholders[categoryLower] || 'https://images.unsplash.com/photo-1542144612-1c93f9eac579?w=400&h=400&fit=crop';
   }
 
   // New UX Methods

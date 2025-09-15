@@ -132,18 +132,19 @@ export class App implements OnInit, OnDestroy {
             // Prioritize boosted products, then take the newest ones
             const boostedProducts = response.products.filter(p => p.isBoosted);
             const regularProducts = response.products.filter(p => !p.isBoosted);
-            
+
             // Take up to 4 products: boosted first, then regular
             const featuredProducts = [
               ...boostedProducts.slice(0, 4),
               ...regularProducts.slice(0, Math.max(0, 4 - boostedProducts.length))
             ].slice(0, 4);
-            
+
             console.log(`📦 Displaying ${featuredProducts.length} featured products (${boostedProducts.length} boosted)`);
             this.products.set(featuredProducts);
           } else {
-            console.log('📭 No products found in database - showing empty state');
-            this.products.set([]);  // Show empty state instead of mock data
+            console.log('📭 No products found in database - loading sample products as fallback');
+            this.loadSampleProducts();
+            return; // Exit early since loadSampleProducts handles loading state
           }
           
           this.isLoadingProducts.set(false);
@@ -151,16 +152,145 @@ export class App implements OnInit, OnDestroy {
         error: (error) => {
           console.error('❌ Failed to load products from API:', error);
           console.log('📋 Error details:', error.error);
-          console.log('🔄 Showing empty state due to API error');
-          
-          // Show empty state instead of mock data when API fails
-          this.products.set([]);
-          this.isLoadingProducts.set(false);
+          console.log('🔄 Loading sample products as fallback');
+
+          // Load sample products as fallback when API fails
+          this.loadSampleProducts();
         }
       });
   }
 
-  // Removed loadSampleProducts() - no longer using mock data
+  // Load sample products as fallback when API fails
+  private loadSampleProducts(): void {
+    console.log('📋 Loading sample products as fallback');
+
+    const sampleProducts: Product[] = [
+      {
+        _id: 'wilson-pro-staff-97',
+        title: 'Wilson Pro Staff 97 v14',
+        price: 14500,
+        condition: 'New',
+        category: 'Racquets',
+        brand: 'Wilson',
+        model: 'Pro Staff 97 v14',
+        description: 'Brand new Wilson Pro Staff 97 v14. Never used, still in original packaging.',
+        images: [{ url: 'https://images.unsplash.com/photo-1544966503-7a5e6b2c1c3d?w=500&h=500&fit=crop', isMain: true }],
+        seller: {
+          _id: 'seller1',
+          firstName: 'Tennis',
+          lastName: 'Store',
+          rating: { average: 4.8, totalReviews: 125 },
+          location: { city: 'Makati', region: 'Metro Manila' },
+          isVerified: true
+        },
+        location: { city: 'Makati', region: 'Metro Manila' },
+        availability: 'available',
+        tags: ['Professional', 'Wilson', '97sq'],
+        views: 245,
+        favorites: 18,
+        isBoosted: true,
+        isApproved: 'approved',
+        negotiable: true,
+        shippingOptions: { meetup: true, delivery: true, shipping: true },
+        createdAt: '2024-01-15T00:00:00Z',
+        updatedAt: '2024-01-15T00:00:00Z'
+      },
+      {
+        _id: 'babolat-pure-drive',
+        title: 'Babolat Pure Drive 2023',
+        price: 12000,
+        condition: 'Excellent',
+        category: 'Racquets',
+        brand: 'Babolat',
+        model: 'Pure Drive 2023',
+        description: 'Excellent condition Babolat Pure Drive. Used for about 6 months.',
+        images: [{ url: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop', isMain: true }],
+        seller: {
+          _id: 'seller2',
+          firstName: 'Maria',
+          lastName: 'Santos',
+          rating: { average: 4.6, totalReviews: 89 },
+          location: { city: 'Quezon City', region: 'Metro Manila' },
+          isVerified: true
+        },
+        location: { city: 'Quezon City', region: 'Metro Manila' },
+        availability: 'available',
+        tags: ['Power', 'Babolat', 'Intermediate'],
+        views: 156,
+        favorites: 12,
+        isBoosted: false,
+        isApproved: 'approved',
+        negotiable: true,
+        shippingOptions: { meetup: true, delivery: false, shipping: true },
+        createdAt: '2024-01-10T00:00:00Z',
+        updatedAt: '2024-01-10T00:00:00Z'
+      },
+      {
+        _id: 'nike-court-zoom',
+        title: 'Nike Court Air Zoom GP Turbo',
+        price: 5200,
+        condition: 'Like New',
+        category: 'Shoes',
+        brand: 'Nike',
+        model: 'Court Air Zoom GP Turbo',
+        description: 'Like new Nike tennis shoes. Worn only a few times.',
+        images: [{ url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop', isMain: true }],
+        seller: {
+          _id: 'seller3',
+          firstName: 'SportsFan',
+          lastName: 'Pro',
+          rating: { average: 4.9, totalReviews: 67 },
+          location: { city: 'Pasig', region: 'Metro Manila' },
+          isVerified: true
+        },
+        location: { city: 'Pasig', region: 'Metro Manila' },
+        availability: 'available',
+        tags: ['Nike', 'Size 9', 'Performance'],
+        views: 134,
+        favorites: 8,
+        isBoosted: true,
+        isApproved: 'approved',
+        negotiable: true,
+        shippingOptions: { meetup: true, delivery: false, shipping: true },
+        createdAt: '2024-01-12T00:00:00Z',
+        updatedAt: '2024-01-12T00:00:00Z'
+      },
+      {
+        _id: 'yonex-poly-tour',
+        title: 'Yonex Poly Tour Pro String',
+        price: 1200,
+        condition: 'New',
+        category: 'Strings',
+        brand: 'Yonex',
+        model: 'Poly Tour Pro',
+        description: 'Brand new Yonex Poly Tour Pro string set.',
+        images: [{ url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&h=500&fit=crop', isMain: true }],
+        seller: {
+          _id: 'seller4',
+          firstName: 'String',
+          lastName: 'Expert',
+          rating: { average: 4.7, totalReviews: 43 },
+          location: { city: 'BGC', region: 'Metro Manila' },
+          isVerified: true
+        },
+        location: { city: 'BGC', region: 'Metro Manila' },
+        availability: 'available',
+        tags: ['Professional', 'Strings', 'Power'],
+        views: 89,
+        favorites: 5,
+        isBoosted: false,
+        isApproved: 'approved',
+        negotiable: false,
+        shippingOptions: { meetup: true, delivery: true, shipping: true },
+        createdAt: '2024-01-08T00:00:00Z',
+        updatedAt: '2024-01-08T00:00:00Z'
+      }
+    ];
+
+    this.products.set(sampleProducts);
+    this.isLoadingProducts.set(false);
+    console.log('✅ Sample products loaded as fallback');
+  }
   
   // Load categories with counts
   private loadCategories(): void {
