@@ -27,20 +27,25 @@ interface SelectedImage {
       <header class="bg-white shadow-sm border-b border-green-200">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
-            <div class="flex items-center gap-3">
-              <a routerLink="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <a routerLink="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0">
                 <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
                   <span class="text-white font-bold text-sm">🎾</span>
                 </div>
-                <h1 class="text-xl font-bold text-gray-900">TennisMarket</h1>
+                <h1 class="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">TennisMarket</h1>
+                <h1 class="text-lg font-bold text-gray-900 sm:hidden">TM</h1>
               </a>
-              <span class="text-gray-400">›</span>
-              <h2 class="text-lg font-semibold text-gray-700">Sell Your Gear</h2>
+              <span class="text-gray-400 hidden sm:inline">›</span>
+              <h2 class="text-sm sm:text-lg font-semibold text-gray-700 truncate">
+                <span class="hidden sm:inline">Sell Your Gear</span>
+                <span class="sm:hidden">Sell</span>
+              </h2>
             </div>
-            
+
             <!-- User Info -->
-            <div *ngIf="currentUser()" class="flex items-center gap-3 text-sm text-gray-600">
-              <span>Welcome, {{ currentUser()?.firstName }}!</span>
+            <div *ngIf="currentUser()" class="flex items-center gap-2 text-xs sm:text-sm text-gray-600 flex-shrink-0">
+              <span class="hidden sm:inline">Welcome,</span>
+              <span class="font-medium">{{ currentUser()?.firstName }}!</span>
             </div>
           </div>
         </div>
@@ -49,12 +54,12 @@ interface SelectedImage {
 
 
       <!-- Main Form -->
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form [formGroup]="listingForm" (ngSubmit)="onSubmit()" class="space-y-8">
-          
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <form [formGroup]="listingForm" (ngSubmit)="onSubmit()" class="space-y-6 sm:space-y-8">
+
           <!-- Basic Information -->
-          <div class="bg-white rounded-2xl border border-green-200 p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-4">📝 Basic Information</h3>
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-green-200 p-4 sm:p-6">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">📝 Basic Information</h3>
             
             <div class="space-y-4">
               <div>
@@ -207,8 +212,8 @@ interface SelectedImage {
           </div>
 
           <!-- Images -->
-          <div class="bg-white rounded-2xl border border-green-200 p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-4">📸 Photos</h3>
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-green-200 p-4 sm:p-6">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">📸 Photos</h3>
             <p class="text-sm text-gray-600 mb-4">Add up to 8 photos. The first photo will be your main image.</p>
             
             <!-- Image Upload Area -->
@@ -315,8 +320,8 @@ interface SelectedImage {
           </div>
 
           <!-- Pricing -->
-          <div class="bg-white rounded-2xl border border-green-200 p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-4">💰 Pricing</h3>
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-green-200 p-4 sm:p-6">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">💰 Pricing</h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -349,8 +354,8 @@ interface SelectedImage {
           </div>
 
           <!-- Location & Shipping -->
-          <div class="bg-white rounded-2xl border border-green-200 p-6">
-            <h3 class="text-xl font-bold text-gray-900 mb-4">📍 Location & Shipping</h3>
+          <div class="bg-white rounded-xl sm:rounded-2xl border border-green-200 p-4 sm:p-6">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">📍 Location & Shipping</h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
