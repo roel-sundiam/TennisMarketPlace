@@ -9,22 +9,17 @@ import { AuthService } from '../services/auth.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
-    <div class="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center py-4 px-4 sm:py-12 sm:px-6 lg:px-8">
+    <div class="min-h-screen bg-background-main dark:bg-dark-50 transition-colors duration-300 flex items-center justify-center py-4 px-4 sm:py-12 sm:px-6 lg:px-8">
       <div class="max-w-md w-full space-y-4 sm:space-y-8">
         <!-- Header -->
         <div class="text-center">
-          <a routerLink="/" class="inline-flex items-center gap-3 mb-6 hover:scale-105 transition-all duration-200 group">
-            <div class="relative">
-              <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-green-300 group-hover:bg-green-600/20 transition-all duration-200 p-1">
-                <img src="/assets/logo.png" alt="Baseline Gearhub" class="w-full h-full object-contain">
-              </div>
-              <div class="absolute -inset-1 bg-green-600/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 blur-sm"></div>
-            </div>
+          <div class="flex items-center justify-center gap-4 mb-6">
+            <img src="/assets/logo.png" alt="Baseline Gearhub" class="w-20 h-20 md:w-28 md:h-28 object-contain">
             <div class="flex flex-col">
-              <h1 class="text-2xl font-bold text-gray-900 group-hover:text-green-700 transition-colors duration-200">Baseline Gearhub</h1>
-              <span class="text-xs text-gray-600 group-hover:text-green-600 transition-colors duration-200">Your hub for tennis & pickleball gear</span>
+              <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary-600 via-green-600 to-primary-700 dark:from-primary-400 dark:via-green-400 dark:to-primary-500 bg-clip-text text-transparent leading-tight">Baseline Gearhub</h1>
+              <span class="text-sm text-gray-600 dark:text-dark-600">Your hub for tennis & pickleball gear</span>
             </div>
-          </a>
+          </div>
           <h2 class="text-3xl font-bold text-gray-900">Welcome back</h2>
           <p class="mt-2 text-sm text-gray-600">
             Sign in to your account to start trading tennis & pickleball gear
