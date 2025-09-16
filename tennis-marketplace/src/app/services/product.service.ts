@@ -175,11 +175,20 @@ export class ProductService {
   }
 
   updateProduct(id: string, productData: Partial<CreateProductRequest>): Observable<Product> {
-    return this.http.put<Product>(
+    console.log('🌐 ProductService.updateProduct called with:');
+    console.log('   - ID:', id);
+    console.log('   - URL:', `${this.API_BASE}/${id}`);
+    console.log('   - Data:', productData);
+    console.log('   - Headers:', this.authService.getAuthHeaders());
+
+    const request = this.http.put<Product>(
       `${this.API_BASE}/${id}`,
       productData,
       { headers: this.authService.getAuthHeaders() }
     );
+
+    console.log('📡 HTTP PUT request created, subscribing...');
+    return request;
   }
 
   deleteProduct(id: string): Observable<{ success: boolean; message: string }> {

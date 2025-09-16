@@ -29,11 +29,9 @@ interface SelectedImage {
           <div class="flex items-center justify-between h-16">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <a routerLink="/" class="flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0">
-                <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                  <span class="text-white font-bold text-sm">🎾</span>
-                </div>
-                <h1 class="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">TennisMarket</h1>
-                <h1 class="text-lg font-bold text-gray-900 sm:hidden">TM</h1>
+                <img src="/assets/logo.png" alt="Baseline Gearhub Logo" class="w-8 h-8 object-contain">
+                <h1 class="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">Baseline Gearhub</h1>
+                <h1 class="text-lg font-bold text-gray-900 sm:hidden">BG</h1>
               </a>
               <span class="text-gray-400 hidden sm:inline">›</span>
               <h2 class="text-sm sm:text-lg font-semibold text-gray-700 truncate">

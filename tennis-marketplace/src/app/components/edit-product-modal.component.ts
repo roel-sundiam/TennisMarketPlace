@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Product, ProductService, CreateProductRequest } from '../services/product.service';
 import { ModalService } from '../services/modal.service';
+import { UploadService } from '../services/upload.service';
 
 @Component({
   selector: 'app-edit-product-modal',
@@ -176,6 +177,115 @@ import { ModalService } from '../services/modal.service';
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"></textarea>
           </div>
 
+          <!-- Image Management -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Images</label>
+
+            <!-- Current Images -->
+            <div *ngIf="currentImages().length > 0" class="mb-4">
+              <h4 class="text-sm font-medium text-gray-600 mb-2">Current Images ({{ currentImages().length }}/8)</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div *ngFor="let image of currentImages(); let i = index" class="relative group">
+                  <div class="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                    <img
+                      [src]="image.url"
+                      [alt]="image.alt || 'Product image'"
+                      class="w-full h-full object-cover">
+                  </div>
+
+                  <!-- Main Image Badge -->
+                  <div *ngIf="image.isMain" class="absolute top-1 left-1 bg-green-600 text-white px-1.5 py-0.5 rounded text-xs font-medium">
+                    Main
+                  </div>
+
+                  <!-- Delete Button -->
+                  <button
+                    type="button"
+                    (click)="removeCurrentImage(i)"
+                    class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs">
+                    ×
+                  </button>
+
+                  <!-- Set as Main Button -->
+                  <button
+                    *ngIf="!image.isMain"
+                    type="button"
+                    (click)="setCurrentImageAsMain(i)"
+                    class="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white px-1.5 py-0.5 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                    Set Main
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload New Images -->
+            <div class="space-y-3">
+              <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-green-500 transition-colors">
+                <input
+                  type="file"
+                  #fileInput
+                  (change)="onImageSelect($event)"
+                  multiple
+                  accept="image/*"
+                  class="hidden">
+
+                <div class="space-y-2">
+                  <div class="text-gray-400">
+                    <svg class="mx-auto h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                  </div>
+
+                  <button
+                    type="button"
+                    (click)="fileInput.click()"
+                    [disabled]="totalImageCount() >= 8"
+                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                    {{ totalImageCount() >= 8 ? 'Max Images Reached' : 'Add Images' }}
+                  </button>
+
+                  <p class="text-xs text-gray-500">
+                    {{ totalImageCount() }}/8 images • JPG, PNG, WebP • Max 5MB each
+                  </p>
+                </div>
+              </div>
+
+              <!-- New Image Previews -->
+              <div *ngIf="newImages().length > 0" class="space-y-2">
+                <h4 class="text-sm font-medium text-gray-600">New Images to Upload ({{ newImages().length }})</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  <div *ngFor="let image of newImages(); let i = index" class="relative group">
+                    <div class="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                      <img
+                        [src]="image.preview"
+                        [alt]="'New image ' + (i + 1)"
+                        class="w-full h-full object-cover">
+                    </div>
+
+                    <!-- Remove Button -->
+                    <button
+                      type="button"
+                      (click)="removeNewImage(i)"
+                      class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs">
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Upload Progress -->
+              <div *ngIf="uploadProgress() > 0 && uploadProgress() < 100" class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-sm font-medium text-blue-900">Uploading images...</span>
+                  <span class="text-sm text-blue-700">{{ uploadProgress() }}%</span>
+                </div>
+                <div class="w-full bg-blue-200 rounded-full h-1.5">
+                  <div class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" [style.width.%]="uploadProgress()"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Action Buttons -->
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button
@@ -203,7 +313,15 @@ export class EditProductModalComponent implements OnInit {
 
   isOpen = signal<boolean>(false);
   isLoading = signal<boolean>(false);
+  uploadProgress = signal<number>(0);
   tagsString = '';
+
+  // Image management state
+  currentImages = signal<Array<{url: string; alt?: string; isMain?: boolean}>>([]);
+  newImages = signal<Array<{file: File; preview: string}>>([]);
+  imagesToDelete = signal<number[]>([]);
+  maxImages = 8;
+  maxFileSize = 5 * 1024 * 1024; // 5MB
 
   editForm: CreateProductRequest = {
     title: '',
@@ -225,7 +343,8 @@ export class EditProductModalComponent implements OnInit {
 
   constructor(
     private productService: ProductService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private uploadService: UploadService
   ) {}
 
   ngOnInit(): void {
@@ -260,50 +379,113 @@ export class EditProductModalComponent implements OnInit {
     };
 
     this.tagsString = this.product.tags?.join(', ') || '';
+
+    // Initialize current images
+    this.currentImages.set(this.product.images || []);
+
+    // Reset new images and deletion tracking
+    this.newImages.set([]);
+    this.imagesToDelete.set([]);
+    this.uploadProgress.set(0);
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (!this.product || !this.editForm.title || !this.editForm.description || !this.editForm.price) {
       return;
     }
 
     this.isLoading.set(true);
 
-    // Parse tags from string
-    this.editForm.tags = this.tagsString
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
+    try {
+      // Parse tags from string
+      this.editForm.tags = this.tagsString
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
 
-    // Create update payload with only the fields that can be updated
-    const updatePayload: Partial<CreateProductRequest> = {
-      title: this.editForm.title,
-      description: this.editForm.description,
-      price: this.editForm.price,
-      condition: this.editForm.condition,
-      location: this.editForm.location,
-      tags: this.editForm.tags,
-      negotiable: this.editForm.negotiable,
-      shippingOptions: this.editForm.shippingOptions,
-      reasonForSelling: this.editForm.reasonForSelling
-    };
-
-    this.productService.updateProduct(this.product._id, updatePayload).subscribe({
-      next: (updatedProduct) => {
-        this.isLoading.set(false);
-        this.productUpdated.emit(updatedProduct);
-        this.closeModal();
-        this.modalService.success('Product Updated', 'Your product has been updated successfully!');
-      },
-      error: (error) => {
-        this.isLoading.set(false);
-        console.error('Error updating product:', error);
-        this.modalService.error('Update Failed', 'Failed to update the product. Please try again.');
+      // Upload new images if any
+      let newImageUrls: string[] = [];
+      if (this.newImages().length > 0) {
+        newImageUrls = await this.uploadNewImagesIfAny();
       }
-    });
+
+      // Update images array with current + new images
+      const updatedImages = this.updateProductImages(newImageUrls);
+
+      // Create update payload with only the fields that can be updated
+      const updatePayload: Partial<CreateProductRequest> & { images?: Array<{url: string; alt?: string; isMain?: boolean}> } = {
+        title: this.editForm.title,
+        description: this.editForm.description,
+        price: this.editForm.price,
+        condition: this.editForm.condition,
+        location: this.editForm.location,
+        tags: this.editForm.tags,
+        negotiable: this.editForm.negotiable,
+        shippingOptions: this.editForm.shippingOptions,
+        reasonForSelling: this.editForm.reasonForSelling,
+        images: updatedImages
+      };
+
+      this.uploadProgress.set(90);
+
+      console.log('🔄 Sending product update request:', updatePayload);
+      console.log('📸 Images in update payload:', updatePayload.images);
+      console.log('🎯 Product ID for update:', this.product._id);
+
+      console.log('📞 About to call productService.updateProduct...');
+      const updateObservable = this.productService.updateProduct(this.product._id, updatePayload);
+      console.log('📞 Observable created:', updateObservable);
+
+      updateObservable.subscribe({
+        next: (updatedProduct) => {
+          console.log('✅ Product update response received:', updatedProduct);
+          console.log('📸 Response images:', updatedProduct.images);
+          console.log('📅 Response updatedAt:', updatedProduct.updatedAt);
+          this.uploadProgress.set(100);
+
+          setTimeout(() => {
+            this.isLoading.set(false);
+            this.uploadProgress.set(0);
+            this.productUpdated.emit(updatedProduct);
+            this.closeModal();
+            this.modalService.success('Product Updated', 'Your product has been updated successfully!');
+
+            // Clean up new image previews
+            this.newImages().forEach(img => URL.revokeObjectURL(img.preview));
+            this.newImages.set([]);
+          }, 500);
+        },
+        error: (error) => {
+          this.isLoading.set(false);
+          this.uploadProgress.set(0);
+          console.error('❌ Product update failed:', error);
+          console.error('❌ Error details:', JSON.stringify(error, null, 2));
+          this.modalService.error('Update Failed', 'Failed to update the product. Please try again.');
+
+          // Clean up new image previews on error
+          this.newImages().forEach(img => URL.revokeObjectURL(img.preview));
+          this.newImages.set([]);
+        }
+      });
+
+    } catch (error) {
+      this.isLoading.set(false);
+      this.uploadProgress.set(0);
+      console.error('Error during product update:', error);
+      this.modalService.error('Update Failed', 'Failed to upload images. Please try again.');
+
+      // Clean up new image previews on error
+      this.newImages().forEach(img => URL.revokeObjectURL(img.preview));
+      this.newImages.set([]);
+    }
   }
 
   closeModal(): void {
+    // Clean up new image previews
+    this.newImages().forEach(img => URL.revokeObjectURL(img.preview));
+    this.newImages.set([]);
+    this.uploadProgress.set(0);
+
     this.isOpen.set(false);
     this.close.emit();
   }
@@ -342,5 +524,146 @@ export class EditProductModalComponent implements OnInit {
       this.editForm.shippingOptions = { meetup: false, delivery: false, shipping: false };
     }
     this.editForm.shippingOptions.shipping = shipping;
+  }
+
+  // Image management methods
+  totalImageCount(): number {
+    return this.currentImages().length + this.newImages().length;
+  }
+
+  onImageSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files) return;
+
+    const files = Array.from(input.files);
+    this.processSelectedFiles(files);
+
+    // Clear the input so the same file can be selected again
+    input.value = '';
+  }
+
+  private processSelectedFiles(files: File[]): void {
+    const remainingSlots = this.maxImages - this.totalImageCount();
+
+    if (remainingSlots <= 0) {
+      this.modalService.warning('Image Limit', `You can only have up to ${this.maxImages} images total`);
+      return;
+    }
+
+    const filesToProcess = files.slice(0, remainingSlots);
+
+    filesToProcess.forEach(file => {
+      // Validate file
+      if (!this.validateFile(file)) return;
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const preview = e.target?.result as string;
+        this.newImages.update(images => [...images, { file, preview }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private validateFile(file: File): boolean {
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      this.modalService.warning('Invalid File', `"${file.name}" is not a valid image file`);
+      return false;
+    }
+
+    // Check file size
+    if (file.size > this.maxFileSize) {
+      this.modalService.warning('File Too Large', `"${file.name}" is too large. Maximum size is 5MB`);
+      return false;
+    }
+
+    return true;
+  }
+
+  removeCurrentImage(index: number): void {
+    this.currentImages.update(images => {
+      const newImages = [...images];
+      newImages.splice(index, 1);
+
+      // If we removed the main image, set the first remaining image as main
+      if (newImages.length > 0 && !newImages.some(img => img.isMain)) {
+        newImages[0].isMain = true;
+      }
+
+      return newImages;
+    });
+  }
+
+  setCurrentImageAsMain(index: number): void {
+    this.currentImages.update(images => {
+      const newImages = [...images];
+      // Remove main flag from all images
+      newImages.forEach(img => img.isMain = false);
+      // Set selected image as main
+      newImages[index].isMain = true;
+      return newImages;
+    });
+  }
+
+  removeNewImage(index: number): void {
+    this.newImages.update(images => {
+      const newImages = [...images];
+      // Clean up the preview URL
+      URL.revokeObjectURL(newImages[index].preview);
+      newImages.splice(index, 1);
+      return newImages;
+    });
+  }
+
+  private uploadNewImagesIfAny(): Promise<string[]> {
+    const newImagesArray = this.newImages();
+    if (newImagesArray.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    this.uploadProgress.set(10);
+
+    const imageFiles = newImagesArray.map(img => img.file);
+
+    return new Promise((resolve, reject) => {
+      this.uploadService.uploadImages(imageFiles).subscribe({
+        next: (uploadResponse) => {
+          this.uploadProgress.set(70);
+
+          if (uploadResponse?.success) {
+            resolve(uploadResponse.urls);
+          } else {
+            reject(new Error(uploadResponse?.message || 'Upload failed'));
+          }
+        },
+        error: (error) => {
+          this.uploadProgress.set(0);
+          reject(error);
+        }
+      });
+    });
+  }
+
+  private updateProductImages(newImageUrls: string[]): Array<{url: string; alt?: string; isMain?: boolean}> {
+    const currentImagesArray = this.currentImages();
+
+    // Create new image objects from uploaded URLs
+    const newImageObjects = newImageUrls.map((url, index) => ({
+      url,
+      alt: `${this.editForm.title} - Image ${currentImagesArray.length + index + 1}`,
+      isMain: false
+    }));
+
+    // Combine current and new images
+    const allImages = [...currentImagesArray, ...newImageObjects];
+
+    // Ensure we have a main image
+    if (allImages.length > 0 && !allImages.some(img => img.isMain)) {
+      allImages[0].isMain = true;
+    }
+
+    return allImages;
   }
 }

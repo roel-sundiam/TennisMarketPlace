@@ -252,6 +252,7 @@ router.post('/', authenticate, trackApiUsage('product_create'), async (req, res)
 // PUT /api/products/:id - Update product (requires authentication and ownership)
 router.put('/:id', authenticate, async (req, res) => {
   try {
+
     const product = await Product.findById(req.params.id);
 
     if (!product) {
@@ -266,7 +267,7 @@ router.put('/:id', authenticate, async (req, res) => {
     // Update allowed fields
     const allowedUpdates = [
       'title', 'description', 'price', 'condition', 'specifications',
-      'location', 'tags', 'negotiable', 'shippingOptions', 'reasonForSelling'
+      'location', 'tags', 'negotiable', 'shippingOptions', 'reasonForSelling', 'images'
     ];
 
     allowedUpdates.forEach(field => {
@@ -287,6 +288,7 @@ router.put('/:id', authenticate, async (req, res) => {
 
     await product.save();
     await product.populate('seller', 'firstName lastName rating profilePicture location isVerified');
+
 
     res.json(product);
   } catch (error) {
