@@ -477,7 +477,7 @@ interface Seller {
     <!-- Inquiry Modal -->
     <div *ngIf="showInquiryModal()" 
          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-lg max-w-lg w-full max-h-90vh overflow-y-auto">
+      <div class="bg-white rounded-lg max-w-lg w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
         <div class="flex items-center justify-between p-6 border-b">
           <h3 class="text-lg font-semibold">Ask a Question</h3>
           <button (click)="closeInquiryModal()" class="text-gray-400 hover:text-gray-600">
