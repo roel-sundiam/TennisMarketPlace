@@ -164,7 +164,7 @@ import { NotificationService } from '../services/notification.service';
             <div class="bg-white rounded-2xl border border-gray-200 p-6">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Device Types</h3>
               <div class="space-y-3">
-                <div *ngFor="let device of analyticsData()?.devices?.devices || []" class="flex items-center justify-between">
+                <div *ngFor="let device of getDevicesArray()" class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
                     <span class="text-2xl">{{ getDeviceIcon(device.type) }}</span>
                     <span class="text-sm text-gray-600 capitalize">{{ device.type }}</span>
@@ -370,6 +370,16 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     return ((anonymous / total) * 100).toFixed(0);
   }
 
+  getDevicesArray(): Array<{type: string, count: number}> {
+    const devices = this.analyticsData()?.devices?.devices;
+    if (!devices) return [];
+
+    return Object.entries(devices).map(([type, count]) => ({
+      type,
+      count: typeof count === 'number' ? count : 0
+    }));
+  }
+
   getDeviceIcon(deviceType: string): string {
     const icons: { [key: string]: string } = {
       'desktop': '💻',
@@ -383,10 +393,12 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
   getDevicePercentage(count: number): string {
     const data = this.analyticsData();
     if (!data?.devices?.devices) return '0';
-    
-    const total = data.devices.devices.reduce((sum: number, device: any) => sum + device.count, 0);
+
+    // Sum all device counts from the object
+    const devices = data.devices.devices;
+    const total = devices.desktop + devices.mobile + devices.tablet;
     if (total === 0) return '0';
-    
+
     return ((count / total) * 100).toFixed(0);
   }
 

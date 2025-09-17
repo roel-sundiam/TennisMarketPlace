@@ -292,8 +292,16 @@ analyticsSchema.statics.getDeviceStats = async function(startDate, endDate, excl
     ])
   ]);
 
+  // Transform device data to match frontend expectations
+  const deviceCounts = { desktop: 0, mobile: 0, tablet: 0 };
+  deviceTypes.forEach(device => {
+    if (device._id && deviceCounts.hasOwnProperty(device._id)) {
+      deviceCounts[device._id] = device.count;
+    }
+  });
+
   return {
-    devices: deviceTypes.map(d => ({ type: d._id, count: d.count })),
+    devices: deviceCounts,
     browsers: browsers.map(b => ({ browser: b._id, count: b.count }))
   };
 };

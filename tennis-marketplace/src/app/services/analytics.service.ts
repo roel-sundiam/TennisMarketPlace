@@ -39,10 +39,11 @@ export interface AnalyticsStats {
     uniqueVisitors: number;
   }>;
   devices: {
-    devices: Array<{ 
-      type: string; 
-      count: number; 
-    }>;
+    devices: {
+      desktop: number;
+      mobile: number;
+      tablet: number;
+    };
     browsers: Array<{
       browser: string;
       count: number;

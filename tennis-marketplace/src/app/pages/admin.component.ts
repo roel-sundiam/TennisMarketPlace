@@ -4016,9 +4016,9 @@ export class AdminComponent implements OnInit {
           },
           trends: stats.trends || [],
           devices: {
-            desktop: stats.devices.desktop || 0,
-            mobile: stats.devices.mobile || 0,
-            tablet: stats.devices.tablet || 0
+            desktop: stats.devices.devices.desktop || 0,
+            mobile: stats.devices.devices.mobile || 0,
+            tablet: stats.devices.devices.tablet || 0
           },
           popularProducts: stats.popularProducts || [],
           searchStats: stats.searchStats || [],
