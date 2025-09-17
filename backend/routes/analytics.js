@@ -378,13 +378,9 @@ router.get('/user-visits', authenticate, authorize(['admin']), async (req, res) 
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    const matchStage = {
+    const matchStage = Analytics.getBaseFilter({
       createdAt: { $gte: start, $lte: end }
-    };
-
-    if (excludeAdminBool) {
-      matchStage.isAdminActivity = { $ne: true };
-    }
+    }, excludeAdminBool);
 
     // Aggregate user visits data
     const userVisitsAggregation = [
@@ -567,11 +563,11 @@ router.get('/anonymous-visits', authenticate, authorize(['admin']), async (req, 
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    const matchStage = {
+    const matchStage = Analytics.getBaseFilter({
       createdAt: { $gte: start, $lte: end },
       userId: null,
       fingerprint: { $ne: null }
-    };
+    }, true); // exclude admin activity
 
     // Aggregate anonymous visitors data
     const anonymousVisitsAggregation = [
