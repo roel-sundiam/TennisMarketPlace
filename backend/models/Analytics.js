@@ -175,16 +175,26 @@ analyticsSchema.index({ sessionId: 1, createdAt: 1 }); // For session tracking
 
 // Static methods for analytics queries
 
-// Get visitor statistics
-analyticsSchema.statics.getVisitorStats = async function(startDate, endDate, excludeAdmin = true) {
-  const filter = {
-    eventType: 'page_view',
-    createdAt: { $gte: startDate, $lte: endDate }
-  };
-  
+// Helper function to create base filter with IP exclusions
+analyticsSchema.statics.getBaseFilter = function(additionalFilters = {}, excludeAdmin = true) {
+  const filter = { ...additionalFilters };
+
   if (excludeAdmin) {
     filter.isAdminActivity = { $ne: true };
   }
+
+  // Exclude specific IP addresses from analytics
+  filter.ipAddress = { $ne: '120.29.110.239' };
+
+  return filter;
+};
+
+// Get visitor statistics
+analyticsSchema.statics.getVisitorStats = async function(startDate, endDate, excludeAdmin = true) {
+  const filter = this.getBaseFilter({
+    eventType: 'page_view',
+    createdAt: { $gte: startDate, $lte: endDate }
+  }, excludeAdmin);
 
   const [
     totalViews,
@@ -222,16 +232,11 @@ analyticsSchema.statics.getVisitorStats = async function(startDate, endDate, exc
 analyticsSchema.statics.getDailyTrends = async function(days = 30, excludeAdmin = true) {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-  
-  const filter = {
+
+  const filter = this.getBaseFilter({
     eventType: 'page_view',
-    createdAt: { $gte: startDate },
-    isAdminActivity: excludeAdmin ? { $ne: true } : undefined
-  };
-  
-  if (!excludeAdmin) {
-    delete filter.isAdminActivity;
-  }
+    createdAt: { $gte: startDate }
+  }, excludeAdmin);
 
   const trends = await this.aggregate([
     { $match: filter },
@@ -267,14 +272,10 @@ analyticsSchema.statics.getDailyTrends = async function(days = 30, excludeAdmin 
 
 // Get device/browser breakdown
 analyticsSchema.statics.getDeviceStats = async function(startDate, endDate, excludeAdmin = true) {
-  const filter = {
+  const filter = this.getBaseFilter({
     eventType: 'page_view',
     createdAt: { $gte: startDate, $lte: endDate }
-  };
-  
-  if (excludeAdmin) {
-    filter.isAdminActivity = { $ne: true };
-  }
+  }, excludeAdmin);
 
   const [deviceTypes, browsers] = await Promise.all([
     this.aggregate([
@@ -308,15 +309,11 @@ analyticsSchema.statics.getDeviceStats = async function(startDate, endDate, excl
 
 // Get popular products
 analyticsSchema.statics.getPopularProducts = async function(startDate, endDate, limit = 10, excludeAdmin = true) {
-  const filter = {
+  const filter = this.getBaseFilter({
     eventType: 'product_view',
     'data.productId': { $ne: null },
     createdAt: { $gte: startDate, $lte: endDate }
-  };
-  
-  if (excludeAdmin) {
-    filter.isAdminActivity = { $ne: true };
-  }
+  }, excludeAdmin);
 
   const products = await this.aggregate([
     { $match: filter },
@@ -347,15 +344,11 @@ analyticsSchema.statics.getPopularProducts = async function(startDate, endDate, 
 
 // Get search analytics
 analyticsSchema.statics.getSearchStats = async function(startDate, endDate, limit = 20, excludeAdmin = true) {
-  const filter = {
+  const filter = this.getBaseFilter({
     eventType: 'search',
     'data.searchQuery': { $ne: null, $ne: '' },
     createdAt: { $gte: startDate, $lte: endDate }
-  };
-  
-  if (excludeAdmin) {
-    filter.isAdminActivity = { $ne: true };
-  }
+  }, excludeAdmin);
 
   const searches = await this.aggregate([
     { $match: filter },
