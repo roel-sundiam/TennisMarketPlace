@@ -104,8 +104,8 @@ export class App implements OnInit, OnDestroy {
   }
 
   private isHomeRoute(url: string): boolean {
-    // Only show home page content for exact root route
-    return url === '/' || url === '' || url === '/home';
+    // Show home page content for root route and when no other route matches
+    return url === '/' || url === '' || url === '/home' || url.startsWith('/?');
   }
   
   isAuthPage(): boolean {
