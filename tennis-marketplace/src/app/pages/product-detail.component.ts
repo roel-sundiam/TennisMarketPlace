@@ -778,7 +778,7 @@ export class ProductDetailComponent implements OnInit {
       isVerified: true,
       memberSince: 'March 2022',
       location: 'Makati, Metro Manila',
-      phone: '09171234567',
+      phone: '09178529463',
       activeListings: 12
     },
     {
@@ -790,7 +790,7 @@ export class ProductDetailComponent implements OnInit {
       isVerified: true,
       memberSince: 'July 2023',
       location: 'Quezon City, Metro Manila',
-      phone: '09181234567',
+      phone: '09186742195',
       activeListings: 8
     },
     {
@@ -802,7 +802,7 @@ export class ProductDetailComponent implements OnInit {
       isVerified: true,
       memberSince: 'January 2022',
       location: 'BGC, Metro Manila',
-      phone: '09171234568',
+      phone: '09159384672',
       activeListings: 25
     },
     {
@@ -814,7 +814,7 @@ export class ProductDetailComponent implements OnInit {
       isVerified: false,
       memberSince: 'October 2023',
       location: 'Pasig, Metro Manila',
-      phone: '09181234569',
+      phone: '09285967341',
       activeListings: 3
     }
   ];
@@ -977,15 +977,25 @@ export class ProductDetailComponent implements OnInit {
         };
         this.currentProduct.set(detailProduct);
         
-        // Try to find a matching seller or use fallback
-        const matchingSeller = this.sampleSellers.find(s => {
-          if (typeof product.seller === 'object') {
-            return s.id === product.seller._id || s.name.toLowerCase().includes(product.seller.firstName?.toLowerCase() || '');
-          }
-          return s.name.toLowerCase().includes(product.seller?.toLowerCase() || '');
-        }) || this.sampleSellers[0];
-        
-        this.currentSeller.set(matchingSeller);
+        // Create seller object from API data instead of using static sample data
+        if (typeof product.seller === 'object') {
+          const apiSeller: Seller = {
+            id: product.seller._id,
+            name: `${product.seller.firstName} ${product.seller.lastName}`,
+            rating: product.seller.rating?.average || 0,
+            totalReviews: product.seller.rating?.totalReviews || 0,
+            responseTime: '~1 hour', // Default response time
+            isVerified: product.seller.isVerified || false,
+            memberSince: 'Member since 2023', // Default membership
+            location: `${product.seller.location?.city || 'Unknown'}, ${product.seller.location?.region || 'Unknown'}`,
+            phone: product.seller.phoneNumber || '09178529463', // Use actual phone number from API, fallback to realistic number
+            activeListings: 5 // Default active listings count
+          };
+          this.currentSeller.set(apiSeller);
+        } else {
+          // Fallback to sample seller if seller data is incomplete
+          this.currentSeller.set(this.sampleSellers[0]);
+        }
         console.log('Product detail page updated with real data');
       },
       error: (error) => {

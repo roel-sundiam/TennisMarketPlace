@@ -6,6 +6,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AdminService, AdminProduct, AdminStats, CoinStats, UserCoinDetails, SuspiciousActivities } from '../services/admin.service';
 import { ModalService } from '../services/modal.service';
+import { EditProductModalComponent } from '../components/edit-product-modal.component';
+import { Product } from '../services/product.service';
 import { environment } from '../../environments/environment';
 
 // Using AdminProduct and AdminStats from AdminService
@@ -160,7 +162,7 @@ export interface AnonymousVisitsData {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, EditProductModalComponent],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <!-- Modern Admin Header -->
@@ -705,8 +707,8 @@ export interface AnonymousVisitsData {
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ listing.views }}</td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ listing.createdAt | date }}</td>
                           <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button class="text-green-600 hover:text-green-900 mr-3">Edit</button>
-                            <button class="text-red-600 hover:text-red-900">Delete</button>
+                            <button (click)="editListing(listing._id)" class="text-green-600 hover:text-green-900 mr-3">Edit</button>
+                            <button (click)="deleteListing(listing._id)" class="text-red-600 hover:text-red-900">Delete</button>
                           </td>
                         </tr>
                       }
@@ -2487,6 +2489,13 @@ export interface AnonymousVisitsData {
         </div>
       }
     </div>
+
+    <!-- Edit Product Modal -->
+    <app-edit-product-modal
+      [product]="selectedProductAsProduct()"
+      (close)="closeEditModal()"
+      (productUpdated)="onProductUpdated($event)">
+    </app-edit-product-modal>
   `,
   styleUrl: './admin.component.scss'
 })
@@ -2545,6 +2554,17 @@ export class AdminComponent implements OnInit {
 
   // Real data from API
   allProducts = signal<AdminProduct[]>([]);
+
+  // Edit modal state
+  selectedProductForEdit = signal<AdminProduct | null>(null);
+
+  // Convert AdminProduct to Product for the edit modal
+  selectedProductAsProduct = computed(() => {
+    const adminProduct = this.selectedProductForEdit();
+    if (!adminProduct) return null;
+
+    return this.convertAdminProductToProduct(adminProduct);
+  });
 
   // Real user data from API
   allUsers = signal<any[]>([]);
@@ -2916,6 +2936,48 @@ export class AdminComponent implements OnInit {
     this.loadAdminData();
   }
 
+  // Convert AdminProduct to Product for compatibility with EditProductModalComponent
+  private convertAdminProductToProduct(adminProduct: AdminProduct): Product {
+    return {
+      _id: adminProduct._id,
+      title: adminProduct.title,
+      description: adminProduct.description,
+      price: adminProduct.price,
+      category: adminProduct.category as any, // Cast to match Product's union type
+      condition: adminProduct.condition as any, // Cast to match Product's union type
+      brand: adminProduct.brand,
+      images: adminProduct.images.map(img => ({
+        url: img.url,
+        alt: img.alt || undefined, // Convert required to optional
+        isMain: img.isMain || undefined // Convert required to optional
+      })),
+      seller: {
+        ...adminProduct.seller,
+        location: adminProduct.location, // Use product location for seller location
+        profilePicture: undefined // Add missing profilePicture property
+      },
+      location: adminProduct.location,
+      availability: adminProduct.availability,
+      views: adminProduct.views,
+      favorites: adminProduct.favorites,
+      isBoosted: adminProduct.isBoosted,
+      boostExpiresAt: adminProduct.boostExpiresAt,
+      isApproved: adminProduct.isApproved,
+      approvedBy: adminProduct.approvedBy,
+      approvalNotes: adminProduct.approvalNotes,
+      createdAt: adminProduct.createdAt,
+      updatedAt: adminProduct.updatedAt,
+      // Add missing properties with default values
+      tags: [], // Default empty array
+      negotiable: false, // Default false
+      shippingOptions: { // Default shipping options
+        meetup: true,
+        delivery: false,
+        shipping: false
+      }
+    };
+  }
+
   toggleMobileMenu(): void {
     this.showMobileMenu.update(show => !show);
   }
@@ -3080,6 +3142,112 @@ export class AdminComponent implements OnInit {
       error: (error) => {
         console.error('Failed to reject product:', error);
         this.modalService.error('Rejection Failed', 'Unable to reject the product. Please try again later.');
+      }
+    });
+  }
+
+  editListing(productId: string): void {
+    const product = this.allProducts().find(p => p._id === productId);
+    if (!product) {
+      this.modalService.error('Product Not Found', 'Unable to find the product to edit.');
+      return;
+    }
+
+    // Set the product to edit and open the modal
+    this.selectedProductForEdit.set(product);
+  }
+
+  closeEditModal(): void {
+    this.selectedProductForEdit.set(null);
+  }
+
+  onProductUpdated(updatedProduct: Product): void {
+    // Convert Product back to AdminProduct for our local array
+    const adminProduct = this.convertProductToAdminProduct(updatedProduct);
+
+    // Update the product in the local array
+    const products = this.allProducts();
+    const index = products.findIndex(p => p._id === updatedProduct._id);
+    if (index >= 0) {
+      products[index] = adminProduct;
+      this.allProducts.set([...products]);
+    }
+    this.selectedProductForEdit.set(null);
+  }
+
+  // Convert Product back to AdminProduct
+  private convertProductToAdminProduct(product: Product): AdminProduct {
+    return {
+      _id: product._id,
+      title: product.title,
+      description: product.description,
+      price: product.price,
+      category: product.category,
+      condition: product.condition,
+      brand: product.brand,
+      images: product.images.map(img => ({
+        url: img.url,
+        alt: img.alt || '', // Convert optional to required
+        isMain: img.isMain || false // Convert optional to required
+      })),
+      seller: typeof product.seller === 'string'
+        ? {
+            _id: product.seller,
+            firstName: 'Unknown',
+            lastName: 'Seller',
+            rating: { average: 0, totalReviews: 0 },
+            isVerified: false
+          }
+        : {
+            _id: product.seller._id,
+            firstName: product.seller.firstName,
+            lastName: product.seller.lastName,
+            rating: product.seller.rating,
+            isVerified: product.seller.isVerified
+          },
+      location: product.location,
+      availability: product.availability,
+      views: product.views,
+      favorites: product.favorites,
+      isBoosted: product.isBoosted,
+      boostExpiresAt: product.boostExpiresAt,
+      isApproved: product.isApproved,
+      approvedBy: product.approvedBy,
+      approvalNotes: product.approvalNotes,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt
+    };
+  }
+
+  deleteListing(productId: string): void {
+    const product = this.allProducts().find(p => p._id === productId);
+    if (!product) {
+      this.modalService.error('Product Not Found', 'Unable to find the product to delete.');
+      return;
+    }
+
+    this.modalService.confirm(
+      'Delete Product',
+      `Are you sure you want to delete "${product.title}"? This action cannot be undone.`,
+      'Delete',
+      'Cancel'
+    ).subscribe({
+      next: (result) => {
+        if (result.confirmed) {
+          this.adminService.deleteProduct(productId).subscribe({
+            next: (response) => {
+              // Remove the product from the local array
+              const products = this.allProducts();
+              const updatedProducts = products.filter(p => p._id !== productId);
+              this.allProducts.set(updatedProducts);
+              this.modalService.success('Product Deleted', 'The product has been deleted successfully.');
+            },
+            error: (error) => {
+              console.error('Failed to delete product:', error);
+              this.modalService.error('Deletion Failed', 'Unable to delete the product. Please try again later.');
+            }
+          });
+        }
       }
     });
   }
@@ -3625,7 +3793,55 @@ export class AdminComponent implements OnInit {
       
       // Sort by timestamp (newest first)
       allInquiries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
+
+      // If no inquiries found, add some sample data for testing/demonstration
+      if (allInquiries.length === 0) {
+        const sampleInquiries = [
+          {
+            id: 'sample_1',
+            productTitle: 'Wilson Pro Staff 97 v14',
+            productId: 'sample_product_1',
+            buyerName: 'John Doe',
+            buyerEmail: 'john.doe@example.com',
+            buyerPhone: '+63 917 123 4567',
+            message: 'Hi! Is this racket still available? I\'m interested in purchasing it. Can we meet in Makati area?',
+            status: 'pending',
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+            userId: 'sample_user_1',
+            storageKey: 'tennis_buyer_inquiries_sample_user_1'
+          },
+          {
+            id: 'sample_2',
+            productTitle: 'Yonex Poly Tour Pro 125',
+            productId: 'sample_product_2',
+            buyerName: 'Maria Santos',
+            buyerEmail: 'maria.santos@example.com',
+            buyerPhone: '+63 928 987 6543',
+            message: 'Hello! I would like to know more about the string condition. How many hours has it been used?',
+            status: 'pending',
+            timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+            userId: 'sample_user_2',
+            storageKey: 'tennis_buyer_inquiries_sample_user_2'
+          },
+          {
+            id: 'sample_3',
+            productTitle: 'Nike Court Air Zoom',
+            productId: 'sample_product_3',
+            buyerName: 'Carlos Rodriguez',
+            buyerEmail: 'carlos.r@example.com',
+            buyerPhone: '+63 939 555 7890',
+            message: 'Good day! What size are these shoes? Do you accept meetups in Quezon City?',
+            status: 'resolved',
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+            userId: 'sample_user_3',
+            storageKey: 'tennis_buyer_inquiries_sample_user_3'
+          }
+        ];
+
+        allInquiries.push(...sampleInquiries);
+        console.log('📝 Added sample inquiries for demonstration');
+      }
+
       this.allInquiries.set(allInquiries);
       console.log('✅ Loaded', allInquiries.length, 'total inquiries from all users');
       

@@ -42,6 +42,8 @@ export interface Product {
     profilePicture?: string;
     location: { city: string; region: string };
     isVerified: boolean;
+    phoneNumber?: string;
+    email?: string;
   } | string;
   location: {
     city: string;

@@ -388,4 +388,21 @@ export class AdminService {
       { headers: this.getAuthHeaders() }
     );
   }
+
+  // Delete a product (admin)
+  deleteProduct(productId: string): Observable<{message: string}> {
+    return this.http.delete<{message: string}>(
+      `${this.API_BASE}/products/${productId}`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  // Update a product (admin)
+  updateProduct(productId: string, productData: Partial<AdminProduct>): Observable<AdminProduct> {
+    return this.http.put<AdminProduct>(
+      `${this.API_BASE}/products/${productId}`,
+      productData,
+      { headers: this.getAuthHeaders() }
+    );
+  }
 }
