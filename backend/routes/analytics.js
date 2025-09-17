@@ -35,13 +35,25 @@ const parseUserAgent = (userAgent) => {
   return { type: deviceType, browser, os };
 };
 
-// Helper function to get client IP
+// Helper function to get client IP (optimized for Render deployment)
 const getClientIP = (req) => {
-  return req.ip || 
-         req.connection?.remoteAddress || 
+  // Priority order for IP detection (Render uses x-forwarded-for)
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    // Get the first IP in the chain (original client IP)
+    const firstIP = forwardedFor.split(',')[0].trim();
+    if (firstIP && firstIP !== 'unknown') {
+      return firstIP;
+    }
+  }
+
+  // Fallback options
+  return req.headers['x-real-ip'] ||
+         req.headers['cf-connecting-ip'] || // Cloudflare
+         req.headers['x-client-ip'] ||
+         req.ip ||
+         req.connection?.remoteAddress ||
          req.socket?.remoteAddress ||
-         req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-         req.headers['x-real-ip'] ||
          'unknown';
 };
 
@@ -699,6 +711,33 @@ router.get('/anonymous-visits', authenticate, authorize(['admin']), async (req, 
     res.status(500).json({ 
       error: 'Failed to fetch anonymous visits data' 
     });
+  }
+});
+
+// GET /api/analytics/ip-debug - Debug IP detection (admin only)
+router.get('/ip-debug', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const detectedIP = getClientIP(req);
+
+    res.json({
+      success: true,
+      ipDebug: {
+        detectedIP,
+        headers: {
+          'x-forwarded-for': req.headers['x-forwarded-for'],
+          'x-real-ip': req.headers['x-real-ip'],
+          'cf-connecting-ip': req.headers['cf-connecting-ip'],
+          'x-client-ip': req.headers['x-client-ip']
+        },
+        expressIP: req.ip,
+        connectionRemoteAddress: req.connection?.remoteAddress,
+        socketRemoteAddress: req.socket?.remoteAddress,
+        trustProxy: req.app.get('trust proxy')
+      }
+    });
+  } catch (error) {
+    console.error('Error in IP debug:', error);
+    res.status(500).json({ error: 'Failed to debug IP detection' });
   }
 });
 

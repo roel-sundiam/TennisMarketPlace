@@ -28,6 +28,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Configure Express to trust proxy headers (required for Render, Heroku, etc.)
+app.set('trust proxy', true);
+
 // Rate limiting - More permissive for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
