@@ -94,6 +94,8 @@ export interface UserVisit {
   eventTypes: string[];
   devices: string[];
   browsers: string[];
+  ipAddresses: string[];
+  uniqueIPsCount: number;
 }
 
 export interface UserVisitsData {
@@ -130,8 +132,10 @@ export interface AnonymousVisitor {
   devices: string[];
   browsers: string[];
   paths: string[];
+  ipAddresses: string[];
   primaryDevice: string;
   primaryBrowser: string;
+  primaryIP: string;
   avgPagesPerSession: number;
 }
 
@@ -2006,6 +2010,7 @@ export interface AnonymousVisitsData {
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Pages/Session</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Visit</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Addresses</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Devices</th>
                         </tr>
                       </thead>
@@ -2061,6 +2066,21 @@ export interface AnonymousVisitsData {
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {{ formatTimeAgo(user.lastVisit) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div class="flex flex-wrap gap-1 max-w-xs">
+                                @for (ip of user.ipAddresses; track ip; let first = $first) {
+                                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 font-mono">
+                                    {{ ip }}
+                                  </span>
+                                  @if (!first && user.ipAddresses.length > 1) {
+                                    <span class="text-xs text-gray-400">,</span>
+                                  }
+                                }
+                                @if (user.uniqueIPsCount > 1) {
+                                  <span class="text-xs text-gray-500 ml-1">({{ user.uniqueIPsCount }} total)</span>
+                                }
+                              </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                               <div class="flex flex-wrap gap-1">
@@ -2211,6 +2231,7 @@ export interface AnonymousVisitsData {
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Pages/Session</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Visit</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Visit</th>
+                          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Addresses</th>
                           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
                         </tr>
                       </thead>
@@ -2257,6 +2278,18 @@ export interface AnonymousVisitsData {
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {{ formatTimeAgo(visitor.lastVisit) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div class="flex flex-wrap gap-1 max-w-xs">
+                                @for (ip of visitor.ipAddresses; track ip) {
+                                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 font-mono">
+                                    {{ ip }}
+                                  </span>
+                                }
+                                @if (visitor.uniqueIPs > 1) {
+                                  <span class="text-xs text-gray-500 ml-1">({{ visitor.uniqueIPs }} total)</span>
+                                }
+                              </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                               <div class="flex flex-wrap gap-1">

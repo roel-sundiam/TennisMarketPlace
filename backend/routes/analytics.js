@@ -404,7 +404,8 @@ router.get('/user-visits', authenticate, authorize(['admin']), async (req, res) 
           eventTypes: { $addToSet: '$eventType' },
           devices: { $addToSet: '$device.type' },
           browsers: { $addToSet: '$device.browser' },
-          paths: { $addToSet: '$path' }
+          paths: { $addToSet: '$path' },
+          ipAddresses: { $addToSet: '$ipAddress' }
         }
       },
       {
@@ -442,7 +443,9 @@ router.get('/user-visits', authenticate, authorize(['admin']), async (req, res) 
           devices: 1,
           browsers: 1,
           uniquePathsCount: { $size: '$paths' },
-          avgPagesPerSession: { 
+          ipAddresses: 1,
+          uniqueIPsCount: { $size: '$ipAddresses' },
+          avgPagesPerSession: {
             $round: [{ $divide: ['$totalPageViews', '$sessionCount'] }, 1]
           }
         }
@@ -610,9 +613,11 @@ router.get('/anonymous-visits', authenticate, authorize(['admin']), async (req, 
           devices: 1,
           browsers: 1,
           paths: 1,
+          ipAddresses: 1,
           primaryDevice: { $arrayElemAt: ['$devices', 0] },
           primaryBrowser: { $arrayElemAt: ['$browsers', 0] },
-          avgPagesPerSession: { 
+          primaryIP: { $arrayElemAt: ['$ipAddresses', 0] },
+          avgPagesPerSession: {
             $round: [{ $divide: ['$totalPageViews', '$sessionCount'] }, 1]
           }
         }
