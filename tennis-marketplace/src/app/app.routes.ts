@@ -40,6 +40,19 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
   {
+    path: 'looking-for',
+    loadComponent: () => import('./pages/looking-for.component').then(m => m.LookingForComponent)
+  },
+  {
+    path: 'looking-for/create',
+    loadComponent: () => import('./pages/create-looking-for.component').then(m => m.CreateLookingForComponent),
+    canActivate: [AuthGuard]
+  },
+  {
+    path: 'looking-for/:id',
+    loadComponent: () => import('./pages/looking-for-detail.component').then(m => m.LookingForDetailComponent)
+  },
+  {
     path: '**',
     redirectTo: ''
   }

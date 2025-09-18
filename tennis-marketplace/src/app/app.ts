@@ -19,6 +19,7 @@ import { LowBalanceModalComponent } from './components/low-balance-modal.compone
 import { CoinPurchaseModalComponent } from './components/coin-purchase-modal.component';
 import { ReportModalComponent } from './components/report-modal.component';
 import { AnalyticsService } from './services/analytics.service';
+import { ModalService } from './services/modal.service';
 
 @Component({
   selector: 'app-root',
@@ -38,6 +39,7 @@ export class App implements OnInit, OnDestroy {
   private themeService = inject(ThemeService);
   private pwaService = inject(PWAService);
   private analyticsService = inject(AnalyticsService);
+  private modalService = inject(ModalService);
   private destroy$ = new Subject<void>();
   
   // Dynamic product data from API
@@ -396,6 +398,31 @@ export class App implements OnInit, OnDestroy {
         profilePicture: '',
         role: 'seller'
       };
+    }
+  }
+
+  // Handle looking-for link click with login requirement
+  async onLookingForClick(event: Event): Promise<void> {
+    event.preventDefault();
+
+    // Check if user is authenticated
+    if (!this.authService.isAuthenticated()) {
+      // Show modal explaining the feature and asking for login
+      try {
+        const shouldLogin = await this.modalService.loginRequired('Looking For');
+        if (shouldLogin) {
+          // User clicked "Login" - redirect to login page with returnUrl
+          this.router.navigate(['/login'], {
+            queryParams: { returnUrl: '/looking-for' }
+          });
+        }
+        // If user clicked "Cancel", do nothing
+      } catch (error) {
+        console.error('Error showing login modal:', error);
+      }
+    } else {
+      // User is authenticated, proceed to looking-for page
+      this.router.navigate(['/looking-for']);
     }
   }
 }

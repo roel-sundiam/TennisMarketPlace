@@ -519,13 +519,21 @@ interface Inquiry {
                                 <div class="flex items-center justify-between">
                                   <p class="text-xs text-gray-500">{{ formatDate(inquiry.createdAt) }}</p>
                                   <div class="flex gap-2">
-                                    <button 
-                                      *ngIf="!inquiry.response"
+                                    <!-- Reply button for active conversations with messages -->
+                                    <button
+                                      *ngIf="inquiry.messages && inquiry.messages.length > 0"
+                                      class="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors"
+                                      (click)="replyToInquiry(inquiry)">
+                                      Reply
+                                    </button>
+                                    <!-- Respond button for initial response (legacy format) -->
+                                    <button
+                                      *ngIf="(!inquiry.messages || inquiry.messages.length === 0) && !inquiry.response"
                                       class="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors"
                                       (click)="respondToInquiry(inquiry)">
                                       Respond
                                     </button>
-                                    <button 
+                                    <button
                                       *ngIf="inquiry.contactMethod"
                                       class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors"
                                       (click)="contactBuyer(inquiry)">
@@ -539,8 +547,8 @@ interface Inquiry {
                         </div>
                       </div>
 
-                      <!-- Buyer Inquiries Section (Inquiries you sent to sellers) -->
-                      <div *ngIf="inquiries().length > 0" class="bg-white border border-gray-200 rounded-lg">
+                      <!-- Buyer Inquiries Section (Inquiries you sent to sellers) - Only show if user is buyer or has sent inquiries -->
+                      <div *ngIf="inquiries().length > 0 && (user()?.role === 'buyer' || user()?.role === 'admin')" class="bg-white border border-gray-200 rounded-lg">
                         <div class="bg-blue-50 px-4 py-3 border-b border-gray-200">
                           <h3 class="text-sm font-semibold text-blue-800 flex items-center gap-2">
                             <span>💬</span>
@@ -599,8 +607,17 @@ interface Inquiry {
                                 <!-- Action Buttons -->
                                 <div class="flex items-center justify-between">
                                   <p class="text-xs text-gray-500">{{ formatDate(inquiry.createdAt) }}</p>
-                                  <div *ngIf="inquiry.response" class="flex gap-2">
-                                    <button 
+                                  <div class="flex gap-2">
+                                    <!-- Reply button if there are messages (ongoing conversation) -->
+                                    <button
+                                      *ngIf="inquiry.messages && inquiry.messages.length > 0"
+                                      (click)="replyToSeller(inquiry)"
+                                      class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors">
+                                      Reply
+                                    </button>
+                                    <!-- Reply button for legacy response format -->
+                                    <button
+                                      *ngIf="inquiry.response && (!inquiry.messages || inquiry.messages.length === 0)"
                                       (click)="replyToSeller(inquiry)"
                                       class="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors">
                                       Reply
@@ -617,7 +634,15 @@ interface Inquiry {
                       <div *ngIf="inquiries().length === 0 && receivedInquiries().length === 0" class="text-center py-12">
                         <span class="text-6xl mb-4 block">💬</span>
                         <h3 class="text-lg font-semibold text-gray-900 mb-2">No inquiries yet</h3>
-                        <p class="text-gray-600 mb-6">Your messages to sellers and buyer inquiries about your products will appear here</p>
+                        <p *ngIf="user()?.role === 'seller'" class="text-gray-600 mb-6">
+                          Buyer inquiries about your products will appear here
+                        </p>
+                        <p *ngIf="user()?.role === 'buyer'" class="text-gray-600 mb-6">
+                          Your messages to sellers will appear here
+                        </p>
+                        <p *ngIf="user()?.role === 'admin'" class="text-gray-600 mb-6">
+                          Your messages to sellers and buyer inquiries about your products will appear here
+                        </p>
                         <a routerLink="/browse" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
                           Browse Products
                         </a>
@@ -828,31 +853,75 @@ export class ProfileComponent implements OnInit {
   }
 
   loadUserInquiries(): void {
+    const currentUser = this.user();
+    if (!currentUser) {
+      console.log('👤 No current user, cannot load inquiries');
+      this.inquiries.set([]);
+      return;
+    }
+
+    console.log('🔑 Loading inquiries from backend for user:', currentUser.email);
+
+    // Fetch sent inquiries (as buyer) from backend API
+    this.http.get(`${environment.apiUrl}/inquiries/my-inquiries?type=sent&limit=50`, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    }).subscribe({
+      next: (response: any) => {
+        console.log('✅ Loaded sent inquiries from backend:', response);
+
+        // Transform backend data to component format
+        const transformedInquiries = response.inquiries.map((inquiry: any) => ({
+          id: inquiry._id,
+          productTitle: inquiry.productTitle,
+          productId: inquiry.productId?._id || inquiry.productId,
+          sellerName: inquiry.sellerName,
+          sellerId: inquiry.sellerId?._id || inquiry.sellerId,
+          buyerName: inquiry.buyerName,
+          buyerId: inquiry.buyerId?._id || inquiry.buyerId,
+          message: inquiry.message,
+          messages: inquiry.messages || [],
+          status: inquiry.status,
+          createdAt: inquiry.createdAt,
+          imageUrl: inquiry.productId?.images?.[0]?.url || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop',
+          response: inquiry.messages?.length > 1 ? inquiry.messages[inquiry.messages.length - 1].message : null,
+          contactMethod: 'message'
+        }));
+
+        this.inquiries.set(transformedInquiries);
+        console.log('✅ Set', transformedInquiries.length, 'sent inquiries');
+      },
+      error: (error) => {
+        console.error('❌ Error loading inquiries from backend:', error);
+
+        // Fallback to localStorage
+        this.loadUserInquiriesFromLocalStorage();
+      }
+    });
+  }
+
+  private loadUserInquiriesFromLocalStorage(): void {
     try {
       const currentUser = this.user();
       if (!currentUser) {
-        console.log('👤 No current user, cannot load inquiries');
         this.inquiries.set([]);
         return;
       }
 
-      const userSpecificKey = `tennis_buyer_inquiries_${currentUser._id}`;
-      console.log('🔑 Loading inquiries for user:', currentUser.email, 'with key:', userSpecificKey);
+      console.log('🔄 Falling back to localStorage for user inquiries');
 
-      // Check for legacy global inquiries and migrate them if needed
+      const userSpecificKey = `tennis_buyer_inquiries_${currentUser._id}`;
       this.migrateLegacyInquiries(currentUser._id);
 
-      // Load user-specific inquiries from localStorage
       const savedInquiries = localStorage.getItem(userSpecificKey);
       if (savedInquiries) {
         const inquiries = JSON.parse(savedInquiries);
-        
-        // Filter out any invalid inquiries
-        const validInquiries = inquiries.filter((inquiry: any) => 
+
+        const validInquiries = inquiries.filter((inquiry: any) =>
           inquiry.productId && inquiry.message && inquiry.timestamp
         );
-        
-        // Convert to the format expected by the profile component
+
         const formattedInquiries: Inquiry[] = validInquiries.map((inquiry: any) => ({
           id: inquiry.productId + '_' + inquiry.timestamp,
           productTitle: inquiry.productTitle,
@@ -867,26 +936,14 @@ export class ProfileComponent implements OnInit {
           imageUrl: inquiry.imageUrl || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop',
           contactMethod: inquiry.contactMethod
         }));
-        
+
         this.inquiries.set(formattedInquiries);
-        console.log('✅ Loaded', formattedInquiries.length, 'inquiries for user:', currentUser.email);
-        
-        // Debug: Log inquiries with responses
-        const inquiriesWithResponses = formattedInquiries.filter(inq => inq.response);
-        console.log('📝 Found', inquiriesWithResponses.length, 'inquiries with seller responses:', 
-          inquiriesWithResponses.map(inq => ({
-            product: inq.productTitle,
-            status: inq.status,
-            hasResponse: !!inq.response,
-            response: inq.response?.substring(0, 50) + '...'
-          }))
-        );
+        console.log('✅ Loaded inquiries from localStorage fallback');
       } else {
         this.inquiries.set([]);
-        console.log('📭 No saved inquiries found for user:', currentUser.email);
       }
     } catch (error) {
-      console.error('❌ Error loading inquiries:', error);
+      console.error('❌ Error loading user inquiries from localStorage:', error);
       this.inquiries.set([]);
     }
   }
@@ -911,17 +968,66 @@ export class ProfileComponent implements OnInit {
   }
 
   async loadSellerInquiries(): Promise<void> {
+    const currentUser = this.user();
+    if (!currentUser) {
+      console.log('👤 No current user, cannot load seller inquiries');
+      this.receivedInquiries.set([]);
+      return;
+    }
+
+    console.log('🛍️ Loading received inquiries from backend for seller:', currentUser.email);
+
+    // Fetch received inquiries (as seller) from backend API
+    this.http.get(`${environment.apiUrl}/inquiries/my-inquiries?type=received&limit=50`, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    }).subscribe({
+      next: (response: any) => {
+        console.log('✅ Loaded received inquiries from backend:', response);
+
+        // Transform backend data to component format
+        const transformedInquiries = response.inquiries.map((inquiry: any) => ({
+          id: inquiry._id,
+          productTitle: inquiry.productTitle,
+          productId: inquiry.productId?._id || inquiry.productId,
+          sellerName: inquiry.sellerName,
+          sellerId: inquiry.sellerId?._id || inquiry.sellerId,
+          buyerName: inquiry.buyerName,
+          buyerId: inquiry.buyerId?._id || inquiry.buyerId,
+          message: inquiry.message,
+          messages: inquiry.messages || [],
+          status: inquiry.status,
+          createdAt: inquiry.createdAt,
+          imageUrl: inquiry.productId?.images?.[0]?.url || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop',
+          response: inquiry.messages?.length > 1 ? inquiry.messages[inquiry.messages.length - 1].message : null,
+          contactMethod: 'message'
+        }));
+
+        this.receivedInquiries.set(transformedInquiries);
+        console.log('✅ Set', transformedInquiries.length, 'received inquiries');
+      },
+      error: (error) => {
+        console.error('❌ Error loading received inquiries from backend:', error);
+
+        // Fallback to localStorage
+        this.loadSellerInquiriesFromLocalStorage();
+      }
+    });
+  }
+
+  private async loadSellerInquiriesFromLocalStorage(): Promise<void> {
     try {
       const currentUser = this.user();
       if (!currentUser) {
-        console.log('👤 No current user, cannot load seller inquiries');
         this.receivedInquiries.set([]);
         return;
       }
 
-      console.log('🛍️ Loading inquiries for seller:', currentUser.email);
+      console.log('🔄 Falling back to localStorage for seller inquiries');
+
       const receivedInquiries: Inquiry[] = [];
-      
+
       // Iterate through all localStorage keys to find all user inquiries
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -932,15 +1038,14 @@ export class ProfileComponent implements OnInit {
               const inquiries = JSON.parse(userInquiries);
               if (Array.isArray(inquiries)) {
                 // Filter inquiries where the current user is the seller
-                // Only match by exact sellerId to prevent cross-user contamination
-                const inquiriesForThisSeller = inquiries.filter((inquiry: any) => 
+                const inquiriesForThisSeller = inquiries.filter((inquiry: any) =>
                   inquiry.sellerId === currentUser._id
                 );
-                
+
                 // Process each inquiry and fetch buyer name
                 for (const inquiry of inquiriesForThisSeller) {
                   const buyerName = await this.getBuyerNameFromKey(key);
-                  
+
                   const formattedInquiry: Inquiry = {
                     id: inquiry.productId + '_' + inquiry.timestamp,
                     productTitle: inquiry.productTitle,
@@ -957,7 +1062,7 @@ export class ProfileComponent implements OnInit {
                     response: inquiry.response || null,
                     contactMethod: inquiry.contactMethod
                   };
-                  
+
                   receivedInquiries.push(formattedInquiry);
                 }
               }
@@ -967,15 +1072,15 @@ export class ProfileComponent implements OnInit {
           }
         }
       }
-      
+
       // Sort by timestamp (newest first)
       receivedInquiries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
+
       this.receivedInquiries.set(receivedInquiries);
-      console.log('✅ Loaded', receivedInquiries.length, 'inquiries for seller:', currentUser.email);
-      
+      console.log('✅ Loaded inquiries from localStorage fallback');
+
     } catch (error) {
-      console.error('❌ Error loading seller inquiries:', error);
+      console.error('❌ Error loading seller inquiries from localStorage:', error);
       this.receivedInquiries.set([]);
     }
   }
@@ -1239,58 +1344,129 @@ export class ProfileComponent implements OnInit {
 
   // Seller inquiry management methods
   respondToInquiry(inquiry: Inquiry): void {
+    console.log('🔥 RESPOND BUTTON CLICKED! Function called with inquiry:', inquiry);
     this.modalService.prompt(
       'Respond to Inquiry',
       `<strong>Product:</strong> ${inquiry.productTitle}<br><strong>Buyer:</strong> ${inquiry.buyerName}<br><strong>Message:</strong> "${inquiry.message}"<br><br>Send your response to this inquiry:`,
       'Type your response here...'
     ).then((response: string) => {
+      console.log('📝 Modal response received:', response);
       if (response && response.trim()) {
+        console.log('✅ Response valid, calling saveInquiryResponse');
         this.saveInquiryResponse(inquiry, response.trim());
+      } else {
+        console.log('❌ Response empty or invalid');
+      }
+    }).catch((error) => {
+      console.log('❌ Modal cancelled or error:', error);
+    });
+  }
+
+  // Reply to existing conversation (for sellers)
+  replyToInquiry(inquiry: Inquiry): void {
+    console.log('🔥 REPLY BUTTON CLICKED! Function called with inquiry:', inquiry);
+    const currentUser = this.user();
+    if (!currentUser) {
+      console.log('❌ No current user, returning');
+      return;
+    }
+
+    console.log('💬 Seller replying to inquiry:', inquiry.id, 'User:', currentUser.email);
+
+    // Show reply modal directly
+    this.modalService.prompt(
+      'Reply to Conversation',
+      `<strong>Product:</strong> ${inquiry.productTitle}<br><strong>Buyer:</strong> ${inquiry.buyerName}<br><br>Continue the conversation:`,
+      'Type your reply here...'
+    ).then((reply: string) => {
+      if (reply && reply.trim()) {
+        this.sendSellerReply(inquiry, reply.trim());
       }
     }).catch(() => {
       // User cancelled
     });
   }
 
-  private saveInquiryResponse(inquiry: Inquiry, response: string): void {
-    try {
-      // Update the inquiry in localStorage
-      if (inquiry.buyerId) {
-        const buyerKey = `tennis_buyer_inquiries_${inquiry.buyerId}`;
-        const savedInquiries = localStorage.getItem(buyerKey);
-        
-        if (savedInquiries) {
-          const inquiries = JSON.parse(savedInquiries);
-          const inquiryIndex = inquiries.findIndex((inq: any) => 
-            inq.productId === inquiry.productId && inq.timestamp === inquiry.createdAt
-          );
-          
-          if (inquiryIndex !== -1) {
-            inquiries[inquiryIndex].response = response;
-            inquiries[inquiryIndex].status = 'responded';
-            localStorage.setItem(buyerKey, JSON.stringify(inquiries));
-            
-            // Reload seller inquiries to reflect changes
-            this.loadSellerInquiries();
-            
-            // Also reload buyer inquiries in case buyer is viewing the same profile
-            this.loadUserInquiries();
-            this.updateTabCounts();
-            
-            this.modalService.showSuccess(
-              'Response Sent!',
-              'Your response has been sent to the buyer.'
-            );
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error saving inquiry response:', error);
-      this.modalService.showError(
-        'Error',
-        'Failed to send response. Please try again.'
-      );
+  private sendSellerReply(inquiry: Inquiry, reply: string): void {
+    console.log('🚀 SEND SELLER REPLY CALLED!', { inquiry: inquiry.id, reply });
+    const currentUser = this.user();
+    if (!currentUser) {
+      console.log('❌ No current user in sendSellerReply');
+      return;
     }
+
+    console.log('📤 Sending seller reply:', { inquiryId: inquiry.id, reply: reply.substring(0, 50) + '...' });
+
+    // Send reply to backend API
+    this.http.post(`${environment.apiUrl}/inquiries/${inquiry.id}/reply`, {
+      message: reply
+    }, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    }).subscribe({
+      next: (response: any) => {
+        console.log('✅ Seller reply sent successfully:', response);
+
+        // Reload inquiries to show the updated conversation
+        this.loadSellerInquiries();
+        this.loadUserInquiries(); // Also reload in case buyer is viewing same profile
+        this.updateTabCounts();
+
+        this.modalService.showSuccess(
+          'Reply Sent!',
+          'Your reply has been sent to the buyer.'
+        );
+      },
+      error: (error) => {
+        console.error('❌ Error sending seller reply:', error);
+        this.modalService.showError(
+          'Error',
+          'Failed to send reply. Please try again.'
+        );
+      }
+    });
+  }
+
+  private saveInquiryResponse(inquiry: Inquiry, response: string): void {
+    console.log('🚀 SAVE INQUIRY RESPONSE CALLED!', { inquiry: inquiry.id, response });
+    const currentUser = this.user();
+    if (!currentUser) {
+      console.log('❌ No current user in saveInquiryResponse');
+      return;
+    }
+
+    console.log('📤 Sending inquiry response to backend:', { inquiryId: inquiry.id, response: response.substring(0, 50) + '...' });
+
+    // Send response to backend API (same as sendSellerReply)
+    this.http.post(`${environment.apiUrl}/inquiries/${inquiry.id}/reply`, {
+      message: response
+    }, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    }).subscribe({
+      next: (apiResponse: any) => {
+        console.log('✅ Inquiry response sent successfully:', apiResponse);
+
+        // Reload inquiries to show the updated conversation
+        this.loadSellerInquiries();
+        this.loadUserInquiries(); // Also reload in case buyer is viewing same profile
+        this.updateTabCounts();
+
+        this.modalService.showSuccess(
+          'Response Sent!',
+          'Your response has been sent to the buyer.'
+        );
+      },
+      error: (error) => {
+        console.error('❌ Error sending inquiry response:', error);
+        this.modalService.showError(
+          'Error',
+          'Failed to send response. Please try again.'
+        );
+      }
+    });
   }
 
   contactBuyer(inquiry: Inquiry): void {
@@ -1319,9 +1495,19 @@ export class ProfileComponent implements OnInit {
     const currentUser = this.user();
     if (!currentUser) return;
 
+    // Get the latest message from the conversation
+    let previousMessage = 'No previous messages';
+    if (inquiry.messages && inquiry.messages.length > 0) {
+      const lastMessage = inquiry.messages[inquiry.messages.length - 1];
+      previousMessage = `"${lastMessage.message}" (from ${lastMessage.senderName})`;
+    } else if (inquiry.response) {
+      // Fallback to legacy response format
+      previousMessage = `"${inquiry.response}"`;
+    }
+
     this.modalService.prompt(
       'Reply to Seller',
-      `<strong>Product:</strong> ${inquiry.productTitle}<br><strong>Seller:</strong> ${inquiry.sellerName}<br><strong>Previous Response:</strong> "${inquiry.response}"<br><br>Send your reply:`,
+      `<strong>Product:</strong> ${inquiry.productTitle}<br><strong>Seller:</strong> ${inquiry.sellerName}<br><strong>Previous Response:</strong> ${previousMessage}<br><br>Send your reply:`,
       'Type your reply here...'
     ).then((reply: string) => {
       if (reply && reply.trim()) {
@@ -1333,86 +1519,44 @@ export class ProfileComponent implements OnInit {
   }
 
   private saveBuyerReply(inquiry: Inquiry, reply: string): void {
-    try {
-      const currentUser = this.user();
-      if (!currentUser) return;
-
-      // Update buyer's own localStorage
-      const buyerKey = `tennis_buyer_inquiries_${currentUser._id}`;
-      const savedInquiries = localStorage.getItem(buyerKey);
-      
-      if (savedInquiries) {
-        const inquiries = JSON.parse(savedInquiries);
-        const inquiryIndex = inquiries.findIndex((inq: any) => 
-          inq.productId === inquiry.productId && inq.timestamp === inquiry.createdAt
-        );
-        
-        if (inquiryIndex !== -1) {
-          // Initialize messages array if it doesn't exist
-          if (!inquiries[inquiryIndex].messages) {
-            inquiries[inquiryIndex].messages = [
-              {
-                id: 'initial',
-                sender: 'buyer',
-                senderName: `${currentUser.firstName} ${currentUser.lastName}`,
-                message: inquiries[inquiryIndex].message,
-                timestamp: inquiries[inquiryIndex].timestamp
-              }
-            ];
-            
-            // Add seller's response if it exists
-            if (inquiries[inquiryIndex].response) {
-              inquiries[inquiryIndex].messages.push({
-                id: 'seller_response',
-                sender: 'seller',
-                senderName: inquiry.sellerName,
-                message: inquiries[inquiryIndex].response,
-                timestamp: new Date().toISOString()
-              });
-            }
-          }
-          
-          // Add buyer's new reply
-          inquiries[inquiryIndex].messages.push({
-            id: `buyer_reply_${Date.now()}`,
-            sender: 'buyer',
-            senderName: `${currentUser.firstName} ${currentUser.lastName}`,
-            message: reply,
-            timestamp: new Date().toISOString()
-          });
-          
-          inquiries[inquiryIndex].status = 'responded';
-          localStorage.setItem(buyerKey, JSON.stringify(inquiries));
-          
-          // Also update seller's view (if sellerId exists)
-          if (inquiry.sellerId) {
-            this.updateSellerInquiryWithBuyerReply(inquiry, reply);
-          }
-          
-          // Reload inquiries to reflect changes
-          this.loadUserInquiries();
-          this.updateTabCounts();
-          
-          this.modalService.showSuccess(
-            'Reply Sent!',
-            'Your reply has been sent to the seller.'
-          );
-        }
-      }
-    } catch (error) {
-      console.error('Error saving buyer reply:', error);
-      this.modalService.showError(
-        'Error',
-        'Failed to send reply. Please try again.'
-      );
+    console.log('🚀 SAVE BUYER REPLY CALLED!', { inquiry: inquiry.id, reply });
+    const currentUser = this.user();
+    if (!currentUser) {
+      console.log('❌ No current user in saveBuyerReply');
+      return;
     }
-  }
 
-  private updateSellerInquiryWithBuyerReply(inquiry: Inquiry, reply: string): void {
-    // This would typically be handled by the seller when they refresh their inquiries
-    // For now, we'll update it in localStorage if the seller is the current user
-    // In a real app, this would be handled by the backend
-    console.log('Buyer reply saved for seller to see when they refresh their inquiries');
+    console.log('📤 Sending buyer reply to backend:', { inquiryId: inquiry.id, reply: reply.substring(0, 50) + '...' });
+
+    // Send reply to backend API (same endpoint as seller replies)
+    this.http.post(`${environment.apiUrl}/inquiries/${inquiry.id}/reply`, {
+      message: reply
+    }, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    }).subscribe({
+      next: (apiResponse: any) => {
+        console.log('✅ Buyer reply sent successfully:', apiResponse);
+
+        // Reload inquiries to show the updated conversation
+        this.loadUserInquiries(); // Reload buyer inquiries
+        this.loadSellerInquiries(); // Also reload in case seller is viewing same profile
+        this.updateTabCounts();
+
+        this.modalService.showSuccess(
+          'Reply Sent!',
+          'Your reply has been sent to the seller.'
+        );
+      },
+      error: (error) => {
+        console.error('❌ Error sending buyer reply:', error);
+        this.modalService.showError(
+          'Error',
+          'Failed to send reply. Please try again.'
+        );
+      }
+    });
   }
 
   // Verification methods

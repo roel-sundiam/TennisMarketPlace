@@ -19,6 +19,7 @@
         </a>
         <nav class="hidden md:flex items-center gap-6">
           <a routerLink="/browse" class="text-white/90 hover:text-white font-medium transition-all duration-200 hover:scale-105 px-3 py-2 rounded-xl hover:bg-white/10 backdrop-blur-sm">Browse</a>
+          <a (click)="onLookingForClick($event)" class="text-white/90 hover:text-white font-medium transition-all duration-200 hover:scale-105 px-3 py-2 rounded-xl hover:bg-white/10 backdrop-blur-sm cursor-pointer">Looking For</a>
           @if (authService.isAuthenticated()) {
             <a routerLink="/sell" class="text-white/90 hover:text-white font-medium transition-all duration-200 hover:scale-105 px-3 py-2 rounded-xl hover:bg-white/10 backdrop-blur-sm">Sell</a>
           }
@@ -110,13 +111,19 @@
               </div>
             </div>
           }
-          <a routerLink="/browse" 
+          <a routerLink="/browse"
              (click)="closeMobileMenu()"
              class="flex items-center gap-3 p-3 rounded-2xl text-neutral-700 dark:text-dark-800 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 font-semibold">
             <span class="text-primary-600 dark:text-primary-400 text-xl">🔍</span>
             Browse Products
           </a>
-          
+
+          <a (click)="onLookingForClick($event); closeMobileMenu()"
+             class="flex items-center gap-3 p-3 rounded-2xl text-neutral-700 dark:text-dark-800 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-200 font-semibold cursor-pointer">
+            <span class="text-primary-600 dark:text-primary-400 text-xl">👀</span>
+            Looking For
+          </a>
+
           @if (authService.isAuthenticated()) {
             <a routerLink="/sell" 
                (click)="closeMobileMenu()"

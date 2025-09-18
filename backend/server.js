@@ -19,6 +19,8 @@ import adminCoinRoutes from './routes/admin-coins.js';
 import verificationRoutes from './routes/verification.js';
 import analyticsRoutes from './routes/analytics.js';
 import reportRoutes from './routes/reports.js';
+import inquiryRoutes from './routes/inquiries-simple.js';
+import lookingForRoutes from './routes/lookingfor.js';
 
 // Import analytics middleware
 import { trackPageView, trackError } from './middleware/analytics.js';
@@ -123,6 +125,8 @@ app.use('/api/admin/coins', jsonMiddleware, urlencodedMiddleware, adminCoinRoute
 app.use('/api/verification', jsonMiddleware, urlencodedMiddleware, verificationRoutes);
 app.use('/api/analytics', jsonMiddleware, urlencodedMiddleware, analyticsRoutes);
 app.use('/api/reports', jsonMiddleware, urlencodedMiddleware, reportRoutes);
+app.use('/api/inquiries', jsonMiddleware, urlencodedMiddleware, inquiryRoutes);
+app.use('/api/lookingfor', jsonMiddleware, urlencodedMiddleware, lookingForRoutes);
 
 // Error handling middleware with analytics tracking
 app.use(trackError);

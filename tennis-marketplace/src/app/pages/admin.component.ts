@@ -6,6 +6,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AdminService, AdminProduct, AdminStats, CoinStats, UserCoinDetails, SuspiciousActivities } from '../services/admin.service';
 import { ModalService } from '../services/modal.service';
+import { AuthService } from '../services/auth.service';
 import { EditProductModalComponent } from '../components/edit-product-modal.component';
 import { Product } from '../services/product.service';
 import { environment } from '../../environments/environment';
@@ -822,9 +823,10 @@ export interface AnonymousVisitsData {
                           <div class="flex-1">
                             <!-- Inquiry Header -->
                             <div class="flex items-center gap-3 mb-3">
-                              <img 
-                                [src]="inquiry.imageUrl" 
+                              <img
+                                [src]="inquiry.imageUrl"
                                 [alt]="inquiry.productTitle"
+                                (error)="$event.target.src='https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop'"
                                 class="w-12 h-12 rounded-lg object-cover">
                               <div class="flex-1">
                                 <h4 class="font-semibold text-gray-900">{{ inquiry.productTitle }}</h4>
@@ -836,9 +838,38 @@ export interface AnonymousVisitsData {
                               </div>
                             </div>
                             
-                            <!-- Inquiry Message -->
-                            <div class="bg-gray-50 rounded-lg p-4">
-                              <p class="text-sm text-gray-900">{{ inquiry.message }}</p>
+                            <!-- Conversation Thread -->
+                            <div class="space-y-3">
+                              <!-- Original Inquiry Message -->
+                              <div class="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                  <span class="text-xs font-semibold text-blue-700">{{ getUserNameById(inquiry.userId) }}</span>
+                                  <span class="text-xs text-gray-500">{{ inquiry.timestamp | date:'short' }}</span>
+                                </div>
+                                <p class="text-sm text-blue-900">{{ inquiry.message }}</p>
+                              </div>
+
+                              <!-- All Reply Messages -->
+                              <div *ngIf="inquiry.messages && inquiry.messages.length > 0" class="space-y-2">
+                                <div *ngFor="let message of inquiry.messages"
+                                     [class]="message.senderId === inquiry.userId ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-green-50 border-l-4 border-green-400'"
+                                     class="rounded-lg p-3">
+                                  <div class="flex items-center gap-2 mb-1">
+                                    <span [class]="message.senderId === inquiry.userId ? 'text-blue-700' : 'text-green-700'"
+                                          class="text-xs font-semibold">
+                                      {{ message.senderName }}
+                                    </span>
+                                    <span class="text-xs text-gray-500">{{ message.timestamp | date:'short' }}</span>
+                                  </div>
+                                  <p [class]="message.senderId === inquiry.userId ? 'text-blue-900' : 'text-green-900'"
+                                     class="text-sm">{{ message.message }}</p>
+                                </div>
+                              </div>
+
+                              <!-- No Replies State -->
+                              <div *ngIf="!inquiry.messages || inquiry.messages.length === 0" class="text-center py-2">
+                                <span class="text-xs text-gray-500 italic">No replies yet</span>
+                              </div>
                             </div>
                             
                             <!-- Inquiry Metadata -->
@@ -2536,6 +2567,7 @@ export class AdminComponent implements OnInit {
   private adminService = inject(AdminService);
   private http = inject(HttpClient);
   private modalService = inject(ModalService);
+  private authService = inject(AuthService);
   
   activeTab = signal<string>('pending');
   showMobileMenu = signal<boolean>(false);
@@ -3020,9 +3052,11 @@ export class AdminComponent implements OnInit {
     this.activeTab.set(tabId);
     // Close mobile menu when tab is selected
     this.showMobileMenu.set(false);
-    
+
     if (tabId === 'inquiries') {
       console.log('💬 Inquiries tab selected, current inquiries:', this.allInquiries().length);
+      console.log('🔄 Reloading inquiries from backend...');
+      this.loadAllInquiries();
     }
   }
 
@@ -3795,11 +3829,73 @@ export class AdminComponent implements OnInit {
   // Inquiry Management Methods
   
   private loadAllInquiries(): void {
-    console.log('💬 Loading all user inquiries...');
-    
+    console.log('🔍 loadAllInquiries() method called');
+    console.log('💬 Loading all inquiries from backend...');
+    console.log('🔗 API URL:', environment.apiUrl);
+    console.log('🎫 Auth Token:', this.authService.getToken() ? 'Present' : 'Missing');
+
+    this.isLoading.set(true);
+
+    // Fetch inquiries from backend API
+    const url = `${environment.apiUrl}/inquiries/all?limit=100&sortBy=createdAt&sortOrder=desc&_t=${Date.now()}`;
+    console.log('🔗 Full URL being called:', url);
+    console.log('🚀 Making API call to:', `${environment.apiUrl}/inquiries/all`);
+    console.log('🌐 About to make HTTP request...');
+    const httpRequest = this.http.get(url, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    });
+
+    console.log('📡 HTTP request subscribed');
+    httpRequest.subscribe({
+      next: (response: any) => {
+        console.log('✅ HTTP success response:', response);
+        console.log('✅ Loaded inquiries from backend:', response);
+
+        // Transform backend data to match frontend format
+        const transformedInquiries = response.inquiries.map((inquiry: any) => ({
+          id: inquiry._id,
+          productTitle: inquiry.productTitle,
+          productId: inquiry.productId?._id || inquiry.productId,
+          buyerName: inquiry.buyerName,
+          buyerEmail: inquiry.buyerEmail,
+          buyerPhone: inquiry.buyerPhone,
+          sellerName: inquiry.sellerName,
+          sellerId: inquiry.sellerId?._id || inquiry.sellerId,
+          message: inquiry.message,
+          status: inquiry.status,
+          timestamp: inquiry.createdAt,
+          userId: inquiry.buyerId?._id || inquiry.buyerId,
+          isReviewed: inquiry.isReviewed,
+          adminNotes: inquiry.adminNotes,
+          messages: inquiry.messages || [],
+          imageUrl: inquiry.productId?.images?.[0]?.url || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop',
+          contactMethod: 'message'
+        }));
+
+        this.allInquiries.set(transformedInquiries);
+        console.log('✅ Loaded', transformedInquiries.length, 'total inquiries from backend');
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.log('❌ HTTP error occurred:', error);
+        console.error('❌ Error loading inquiries from backend:', error);
+
+        // Fallback to localStorage for backward compatibility
+        console.log('⚠️ Falling back to localStorage...');
+        this.loadInquiriesFromLocalStorage();
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  private loadInquiriesFromLocalStorage(): void {
+    console.log('🔄 Falling back to localStorage for inquiries...');
+
     try {
       const allInquiries: any[] = [];
-      
+
       // Iterate through all localStorage keys to find user-specific inquiry keys
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -3823,7 +3919,7 @@ export class AdminComponent implements OnInit {
           }
         }
       }
-      
+
       // Sort by timestamp (newest first)
       allInquiries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -3876,16 +3972,50 @@ export class AdminComponent implements OnInit {
       }
 
       this.allInquiries.set(allInquiries);
-      console.log('✅ Loaded', allInquiries.length, 'total inquiries from all users');
-      
+      console.log('✅ Loaded', allInquiries.length, 'total inquiries from localStorage fallback');
+
     } catch (error) {
-      console.error('❌ Error loading all inquiries:', error);
+      console.error('❌ Error loading inquiries from localStorage:', error);
       this.allInquiries.set([]);
     }
   }
 
   viewInquiryDetails(inquiry: any): void {
-    // Show detailed modal with full inquiry information
+    // Show detailed modal with full inquiry information including conversation thread
+
+    // Build conversation thread HTML
+    let conversationHtml = `
+      <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded mb-3">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-semibold text-blue-700">${this.getUserNameById(inquiry.userId)}</span>
+          <span class="text-xs text-gray-500">${new Date(inquiry.timestamp).toLocaleString()}</span>
+        </div>
+        <p class="text-sm text-blue-900">${inquiry.message}</p>
+      </div>
+    `;
+
+    // Add all reply messages if they exist
+    if (inquiry.messages && inquiry.messages.length > 0) {
+      conversationHtml += inquiry.messages.map((message: any) => {
+        const isBuyer = message.senderId === inquiry.userId;
+        const bgColor = isBuyer ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-green-50 border-l-4 border-green-400';
+        const textColor = isBuyer ? 'text-blue-700' : 'text-green-700';
+        const messageTextColor = isBuyer ? 'text-blue-900' : 'text-green-900';
+
+        return `
+          <div class="${bgColor} p-3 rounded mb-2">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-semibold ${textColor}">${message.senderName}</span>
+              <span class="text-xs text-gray-500">${new Date(message.timestamp).toLocaleString()}</span>
+            </div>
+            <p class="text-sm ${messageTextColor}">${message.message}</p>
+          </div>
+        `;
+      }).join('');
+    } else {
+      conversationHtml += '<p class="text-xs text-gray-500 italic text-center py-2">No replies yet</p>';
+    }
+
     const details = `
       <div class="space-y-4 text-left">
         <div>
@@ -3894,24 +4024,25 @@ export class AdminComponent implements OnInit {
           <p><strong>Product ID:</strong> ${inquiry.productId}</p>
           <p><strong>Seller:</strong> ${inquiry.sellerName}</p>
         </div>
-        
+
         <div>
           <h4 class="font-semibold text-gray-900 mb-2">Buyer Information</h4>
           <p><strong>Buyer Name:</strong> ${this.getUserNameById(inquiry.userId)}</p>
           <p><strong>User ID:</strong> ${inquiry.userId}</p>
-          <p><strong>Contact Method:</strong> ${inquiry.contactMethod}</p>
+          <p><strong>Contact Method:</strong> ${inquiry.contactMethod || 'Not specified'}</p>
           <p><strong>Inquiry Date:</strong> ${new Date(inquiry.timestamp).toLocaleString()}</p>
+          <p><strong>Status:</strong> ${inquiry.status}</p>
         </div>
-        
+
         <div>
-          <h4 class="font-semibold text-gray-900 mb-2">Message</h4>
-          <div class="bg-gray-50 p-3 rounded border">
-            ${inquiry.message}
+          <h4 class="font-semibold text-gray-900 mb-2">Conversation Thread</h4>
+          <div class="max-h-96 overflow-y-auto">
+            ${conversationHtml}
           </div>
         </div>
       </div>
     `;
-    
+
     this.modalService.info('Inquiry Details', details);
   }
 

@@ -125,6 +125,25 @@ export class ModalService {
     });
   }
 
+  // Show login requirement modal
+  loginRequired(featureName: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const config: ModalConfig = {
+        title: `Login Required`,
+        message: `<strong>${featureName}</strong> allows you to post requests for specific gear you're looking for.<br><br>Other users can then see your request and offer to sell you exactly what you need.<br><br>Please log in to use this feature.`,
+        type: 'info',
+        icon: '🔐',
+        confirmText: 'Login',
+        cancelText: 'Cancel',
+        showCancel: true
+      };
+
+      this.showModal(config).subscribe(result => {
+        resolve(result.confirmed);
+      });
+    });
+  }
+
   // Convenience methods that return promises instead of observables
   showSuccess(title: string, message: string): Promise<void> {
     return new Promise((resolve) => {

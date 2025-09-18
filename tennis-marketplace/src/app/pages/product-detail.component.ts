@@ -2,11 +2,13 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { ProductCardComponent } from '../components/product-card.component';
 import { Product, ProductService } from '../services/product.service';
 import { PriceComponent } from '../components/price.component';
 import { ModalService } from '../services/modal.service';
 import { AuthService } from '../services/auth.service';
+import { environment } from '../../environments/environment';
 
 interface ProductDetail extends Product {
   model?: string;
@@ -870,6 +872,7 @@ export class ProductDetailComponent implements OnInit {
   private productService = inject(ProductService);
   private modalService = inject(ModalService);
   private authService = inject(AuthService);
+  private http = inject(HttpClient);
 
 
   private loadProduct(productId: string) {
@@ -1320,8 +1323,52 @@ export class ProductDetailComponent implements OnInit {
       return;
     }
 
+    // Extract phone number from the inquiry form
+    const phoneInput = document.querySelector('input[placeholder="Your phone number"]') as HTMLInputElement;
+    const buyerPhone = phoneInput?.value || currentUser.phoneNumber || '';
+
+    if (!buyerPhone) {
+      console.error('❌ Phone number is required for inquiry');
+      this.modalService.error('Error', 'Phone number is required to send inquiry');
+      return;
+    }
+
+    const inquiryData = {
+      productId: product._id,
+      message: message,
+      buyerPhone: buyerPhone
+    };
+
+    console.log('💾 Saving inquiry to backend for user:', currentUser.email, inquiryData);
+
+    // Send inquiry to backend API
+    this.http.post(`${environment.apiUrl}/inquiries`, inquiryData, {
+      headers: {
+        'Authorization': `Bearer ${this.authService.getToken()}`
+      }
+    }).subscribe({
+      next: (response: any) => {
+        console.log('✅ Inquiry saved to backend successfully:', response);
+        this.modalService.success('Success', 'Your inquiry has been sent to the seller!');
+      },
+      error: (error) => {
+        console.error('❌ Error saving inquiry to backend:', error);
+
+        // Fallback to localStorage for backward compatibility
+        this.saveInquiryToLocalStorage(product, message, contactMethod, currentUser);
+
+        if (error.status === 400 && error.error?.error) {
+          this.modalService.error('Error', error.error.error);
+        } else {
+          this.modalService.error('Error', 'Failed to send inquiry. Please try again.');
+        }
+      }
+    });
+  }
+
+  private saveInquiryToLocalStorage(product: any, message: string, contactMethod: string, currentUser: any): void {
     const seller = typeof product.seller === 'string' ? { _id: product.seller, firstName: 'Seller', lastName: '' } : product.seller;
-    
+
     const inquiry = {
       productId: product._id,
       productTitle: product.title,
@@ -1332,23 +1379,17 @@ export class ProductDetailComponent implements OnInit {
       timestamp: new Date().toISOString(),
       status: 'sent',
       imageUrl: product.images?.[0]?.url || 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=500&h=500&fit=crop',
-      buyerId: currentUser._id // Add buyer ID for user-specific tracking
+      buyerId: currentUser._id
     };
-
-    console.log('💾 Saving inquiry for user:', currentUser.email, inquiry);
 
     try {
       const userSpecificKey = `tennis_buyer_inquiries_${currentUser._id}`;
       const existingInquiries = JSON.parse(localStorage.getItem(userSpecificKey) || '[]');
-      console.log('📋 Existing inquiries count for user:', existingInquiries.length);
-      
       existingInquiries.unshift(inquiry);
       localStorage.setItem(userSpecificKey, JSON.stringify(existingInquiries));
-      
-      console.log('✅ Inquiry saved! Total inquiries for user now:', existingInquiries.length);
-      console.log('🔍 Saved to localStorage key:', userSpecificKey);
+      console.log('✅ Inquiry saved to localStorage as fallback');
     } catch (e) {
-      console.error('❌ Error saving inquiry:', e);
+      console.error('❌ Error saving inquiry to localStorage:', e);
     }
   }
 }

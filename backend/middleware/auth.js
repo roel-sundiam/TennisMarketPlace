@@ -56,8 +56,10 @@ export const authenticate = async (req, res, next) => {
       }
     } else {
       console.log('🔑 Processing real JWT token...');
+      const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
+      console.log('🔑 JWT_SECRET being used:', jwtSecret.substring(0, 10) + '...');
       // Verify real JWT token
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      decoded = jwt.verify(token, jwtSecret);
       console.log('✅ Real JWT valid, userId:', decoded.userId);
     }
     
