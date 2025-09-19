@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ProductCardComponent } from '../components/product-card.component';
 import { Product, ProductService, ProductsResponse } from '../services/product.service';
 import { takeUntil } from 'rxjs/operators';
@@ -12,6 +12,7 @@ import { LowBalanceModalComponent } from '../components/low-balance-modal.compon
 import { CoinPurchaseModalComponent } from '../components/coin-purchase-modal.component';
 
 interface FilterState {
+  sport: string;
   category: string;
   condition: string[];
   priceMin: number | null;
@@ -266,6 +267,41 @@ interface RecentlyViewedProduct {
               <!-- Filter Content -->
               <div class="p-6 space-y-8">
                 <!-- Category Filter -->
+                <!-- Sport Filter Section -->
+                <div class="space-y-4">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                    </div>
+                    <h4 class="text-lg font-bold text-neutral-900">Sport</h4>
+                  </div>
+                  <div class="space-y-2">
+                    <div *ngFor="let sport of sports"
+                         class="group relative overflow-hidden rounded-2xl border border-neutral-200/60 hover:border-primary-300 transition-all duration-200">
+                      <label class="flex items-center justify-between p-4 cursor-pointer hover:bg-gradient-to-r hover:from-primary-50/30 hover:to-transparent transition-all duration-200">
+                        <div class="flex items-center gap-3">
+                          <div class="relative">
+                            <input
+                              type="radio"
+                              [value]="sport.value"
+                              [(ngModel)]="filters().sport"
+                              (change)="onFiltersChange()"
+                              class="w-5 h-5 text-primary-600 border-2 border-neutral-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-full">
+                            <div class="absolute inset-0 rounded-full bg-primary-100/50 scale-0 group-hover:scale-100 transition-transform duration-200 -z-10"></div>
+                          </div>
+                          <span class="font-medium text-neutral-800 group-hover:text-primary-700 transition-colors">{{ sport.name }}</span>
+                        </div>
+                        <div class="bg-gradient-to-r from-neutral-100 to-neutral-200 text-neutral-600 text-xs font-bold px-3 py-1.5 rounded-xl group-hover:from-primary-100 group-hover:to-primary-200 group-hover:text-primary-700 transition-all duration-200">
+                          {{ sport.count }}
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Category Filter Section -->
                 <div class="space-y-4">
                   <div class="flex items-center gap-3 mb-4">
                     <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
@@ -454,7 +490,41 @@ interface RecentlyViewedProduct {
 
               <!-- Filter Content -->
               <div class="p-6 space-y-8">
-                <!-- Category Filter -->
+                <!-- Mobile Sport Filter -->
+                <div class="space-y-4">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                    </div>
+                    <h4 class="text-base font-bold text-neutral-900">Sport</h4>
+                  </div>
+                  <div class="space-y-2">
+                    <div *ngFor="let sport of sports"
+                         class="group relative overflow-hidden rounded-xl border border-neutral-200/60 hover:border-primary-300 transition-all duration-200">
+                      <label class="flex items-center justify-between p-3 cursor-pointer hover:bg-gradient-to-r hover:from-primary-50/30 hover:to-transparent transition-all duration-200">
+                        <div class="flex items-center gap-3">
+                          <div class="relative">
+                            <input
+                              type="radio"
+                              [value]="sport.value"
+                              [(ngModel)]="filters().sport"
+                              (change)="onFiltersChange()"
+                              class="w-4 h-4 text-primary-600 border-2 border-neutral-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 rounded-full">
+                            <div class="absolute inset-0 rounded-full bg-primary-100/50 scale-0 group-hover:scale-100 transition-transform duration-200 -z-10"></div>
+                          </div>
+                          <span class="text-sm font-medium text-neutral-800 group-hover:text-primary-700 transition-colors">{{ sport.name }}</span>
+                        </div>
+                        <div class="bg-gradient-to-r from-neutral-100 to-neutral-200 text-neutral-600 text-xs font-bold px-2.5 py-1 rounded-lg group-hover:from-primary-100 group-hover:to-primary-200 group-hover:text-primary-700 transition-all duration-200">
+                          {{ sport.count }}
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mobile Category Filter -->
                 <div class="space-y-4">
                   <div class="flex items-center gap-3 mb-4">
                     <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
@@ -914,6 +984,7 @@ interface RecentlyViewedProduct {
             <div class="text-sm text-gray-600">
               <p class="font-medium mb-1">Current filters:</p>
               <div class="space-y-1">
+                <div *ngIf="filters().sport !== 'all'">Sport: {{ filters().sport }}</div>
                 <div *ngIf="filters().category !== 'all'">Category: {{ filters().category }}</div>
                 <div *ngIf="filters().condition.length > 0">Condition: {{ filters().condition.join(', ') }}</div>
                 <div *ngIf="filters().priceMin || filters().priceMax">
@@ -969,6 +1040,7 @@ interface RecentlyViewedProduct {
 export class BrowseComponent implements OnInit, OnDestroy {
   private productService = inject(ProductService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private coinService = inject(CoinService);
   private authService = inject(AuthService);
   private destroy$ = new Subject<void>();
@@ -979,6 +1051,7 @@ export class BrowseComponent implements OnInit, OnDestroy {
 
   // State management using Angular signals
   filters = signal<FilterState>({
+    sport: 'all',
     category: 'all',
     condition: [],
     priceMin: null,
@@ -1010,14 +1083,21 @@ export class BrowseComponent implements OnInit, OnDestroy {
   showMobileFilters = signal<boolean>(false);
   newSearchName = signal<string>('');
 
+  sports = [
+    { name: 'All Sports', value: 'all', count: 0 },
+    { name: 'Tennis', value: 'tennis', count: 0 },
+    { name: 'Pickleball', value: 'pickleball', count: 0 }
+  ];
   categories = [
     { name: 'All Categories', value: 'all', count: 0 },
     { name: 'Racquets', value: 'racquets', count: 0 },
+    { name: 'Pickleball Paddles', value: 'pickleball paddles', count: 0 },
     { name: 'Strings', value: 'strings', count: 0 },
     { name: 'Shoes', value: 'shoes', count: 0 },
     { name: 'Bags', value: 'bags', count: 0 },
     { name: 'Balls', value: 'balls', count: 0 },
-    { name: 'Apparel', value: 'apparel', count: 0 }
+    { name: 'Apparel', value: 'apparel', count: 0 },
+    { name: 'Accessories', value: 'accessories', count: 0 }
   ];
 
   conditions = ['New', 'Like New', 'Excellent', 'Good', 'Fair'];
@@ -1046,12 +1126,40 @@ export class BrowseComponent implements OnInit, OnDestroy {
   // Since filtering/sorting is now done server-side via API, 
   // these computed properties simply return the API data
   filteredProducts = computed(() => {
-    return this.allProducts();
+    const filters = this.filters();
+    let products = this.allProducts();
+
+    // Apply sport filter
+    if (filters.sport !== 'all') {
+      const targetSport = this.capitalizeSport(filters.sport);
+      products = products.filter(p => p.sport === targetSport);
+    }
+
+    // Apply other filters when using sample data
+    if (filters.category !== 'all') {
+      const targetCategory = this.capitalizeCategory(filters.category);
+      products = products.filter(p => p.category === targetCategory);
+    }
+
+    if (filters.condition.length > 0) {
+      products = products.filter(p => filters.condition.includes(p.condition));
+    }
+
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      products = products.filter(p =>
+        p.title.toLowerCase().includes(searchTerm) ||
+        p.description.toLowerCase().includes(searchTerm) ||
+        p.brand.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    return products;
   });
 
   paginatedProducts = computed(() => {
-    // API already handles pagination, so return all products
-    return this.allProducts();
+    // Use filtered products instead of all products for better user experience
+    return this.filteredProducts();
   });
 
   startItem = computed(() => {
@@ -1100,6 +1208,39 @@ export class BrowseComponent implements OnInit, OnDestroy {
       }
     }
 
+    // Check for category parameter from URL (from home page category clicks)
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      if (params['category']) {
+        const rawCategory = params['category'];
+        console.log('🏷️ Category filter from URL:', rawCategory);
+
+        // Decode and normalize the category parameter
+        const decodedCategory = decodeURIComponent(rawCategory).toLowerCase();
+        console.log('🔄 Decoded category:', decodedCategory);
+
+        // Map common variations to the correct category values
+        const categoryMappings: { [key: string]: string } = {
+          'pickleball paddles': 'pickleball paddles',
+          'racquets': 'racquets',
+          'strings': 'strings',
+          'shoes': 'shoes',
+          'bags': 'bags',
+          'balls': 'balls',
+          'apparel': 'apparel',
+          'accessories': 'accessories'
+        };
+
+        const mappedCategory = categoryMappings[decodedCategory] || decodedCategory;
+        console.log('🗺️ Mapped category:', mappedCategory);
+
+        const currentFilters = this.filters();
+        this.filters.set({
+          ...currentFilters,
+          category: mappedCategory
+        });
+      }
+    });
+
     this.loadProducts();
     this.updatePagination();
     this.loadSavedSearches();
@@ -1146,6 +1287,10 @@ export class BrowseComponent implements OnInit, OnDestroy {
       sortBy: f.sortBy
     };
 
+    if (f.sport !== 'all') {
+      apiFilters.sport = this.capitalizeSport(f.sport);
+    }
+
     if (f.category !== 'all') {
       apiFilters.category = this.capitalizeCategory(f.category);
     }
@@ -1181,6 +1326,7 @@ export class BrowseComponent implements OnInit, OnDestroy {
         title: 'Wilson Pro Staff 97 v14',
         price: 14500,
         condition: 'New',
+        sport: 'Tennis',
         category: 'Racquets',
         brand: 'Wilson',
         model: 'Pro Staff 97 v14',
@@ -1211,6 +1357,7 @@ export class BrowseComponent implements OnInit, OnDestroy {
         title: 'Babolat Pure Drive 2023',
         price: 12000,
         condition: 'Excellent',
+        sport: 'Tennis',
         category: 'Racquets',
         brand: 'Babolat',
         model: 'Pure Drive 2023',
@@ -1241,6 +1388,7 @@ export class BrowseComponent implements OnInit, OnDestroy {
         title: 'Yonex Poly Tour Pro String',
         price: 6800,
         condition: 'New',
+        sport: 'Tennis',
         category: 'Strings',
         brand: 'Yonex',
         model: 'Poly Tour Pro',
@@ -1264,6 +1412,7 @@ export class BrowseComponent implements OnInit, OnDestroy {
         title: 'Nike Court Air Zoom GP Turbo',
         price: 5200,
         condition: 'Like New',
+        sport: 'Tennis',
         category: 'Shoes',
         brand: 'Nike',
         model: 'Court Air Zoom GP Turbo',
@@ -1281,6 +1430,61 @@ export class BrowseComponent implements OnInit, OnDestroy {
         shippingOptions: { meetup: true, delivery: false, shipping: true },
         createdAt: '2024-01-12T00:00:00Z',
         updatedAt: '2024-01-12T00:00:00Z'
+      },
+      {
+        _id: 'selkirk-power-air',
+        title: 'Selkirk Power Air Epic',
+        price: 8500,
+        condition: 'Excellent',
+        sport: 'Pickleball',
+        category: 'Racquets',
+        brand: 'Selkirk',
+        model: 'Power Air Epic',
+        description: 'High-quality pickleball paddle in excellent condition. Great for intermediate to advanced players.',
+        images: [{ url: 'https://images.unsplash.com/photo-1593786481919-421b2a2fb2ce?w=500&h=500&fit=crop', isMain: true }],
+        seller: {
+          _id: 'seller3',
+          firstName: 'Carlos',
+          lastName: 'Reyes',
+          rating: { average: 4.9, totalReviews: 45 },
+          location: { city: 'Alabang', region: 'Metro Manila' },
+          isVerified: true
+        },
+        location: { city: 'Alabang', region: 'Metro Manila' },
+        availability: 'available',
+        tags: ['Selkirk', 'Power', 'Advanced'],
+        views: 78,
+        favorites: 6,
+        isBoosted: false,
+        isApproved: 'approved',
+        negotiable: true,
+        shippingOptions: { meetup: true, delivery: true, shipping: true },
+        createdAt: '2024-01-14T00:00:00Z',
+        updatedAt: '2024-01-14T00:00:00Z'
+      },
+      {
+        _id: 'franklin-x-40',
+        title: 'Franklin X-40 Pickleball Set',
+        price: 3200,
+        condition: 'New',
+        sport: 'Pickleball',
+        category: 'Balls',
+        brand: 'Franklin',
+        model: 'X-40',
+        description: 'Official tournament pickleball balls. Set of 6 balls.',
+        images: [{ url: 'https://images.unsplash.com/photo-1578473772281-04e1e5b8a5db?w=500&h=500&fit=crop', isMain: true }],
+        seller: 'PickleballStore',
+        location: { city: 'Mandaluyong', region: 'Metro Manila' },
+        availability: 'available',
+        tags: ['Franklin', 'Tournament', 'Official'],
+        views: 45,
+        favorites: 3,
+        isBoosted: false,
+        isApproved: 'approved',
+        negotiable: false,
+        shippingOptions: { meetup: true, delivery: true, shipping: true },
+        createdAt: '2024-01-11T00:00:00Z',
+        updatedAt: '2024-01-11T00:00:00Z'
       }
     ];
 
@@ -1295,9 +1499,18 @@ export class BrowseComponent implements OnInit, OnDestroy {
     this.isLoading.set(false);
   }
 
+  private capitalizeSport(sport: string): string {
+    const sportMap: { [key: string]: string } = {
+      'tennis': 'Tennis',
+      'pickleball': 'Pickleball'
+    };
+    return sportMap[sport] || sport;
+  }
+
   private capitalizeCategory(category: string): string {
     const categoryMap: { [key: string]: string } = {
       'racquets': 'Racquets',
+      'pickleball paddles': 'Pickleball Paddles',
       'strings': 'Strings',
       'shoes': 'Shoes',
       'bags': 'Bags',
@@ -1345,6 +1558,7 @@ export class BrowseComponent implements OnInit, OnDestroy {
 
   clearAllFilters() {
     this.filters.set({
+      sport: 'all',
       category: 'all',
       condition: [],
       priceMin: null,
@@ -1592,13 +1806,14 @@ export class BrowseComponent implements OnInit, OnDestroy {
   getActiveFiltersCount(): number {
     const f = this.filters();
     let count = 0;
-    
+
+    if (f.sport !== 'all') count++;
     if (f.category !== 'all') count++;
     if (f.condition.length > 0) count++;
     if (f.priceMin !== null || f.priceMax !== null) count++;
     if (f.location) count++;
     if (f.search) count++;
-    
+
     return count;
   }
 

@@ -177,6 +177,7 @@ export class App implements OnInit, OnDestroy {
           // Map categories to include icons
           const categoryIcons: {[key: string]: string} = {
             'Racquets': '🏸',
+            'Pickleball Paddles': '🏓',
             'Strings': '🧵',
             'Shoes': '👟',
             'Bags': '🧳',
@@ -205,6 +206,7 @@ export class App implements OnInit, OnDestroy {
     console.log('📋 Loading basic categories with zero counts');
     this.categories.set([
       { name: 'Racquets', icon: '🏸', count: '0' },
+      { name: 'Pickleball Paddles', icon: '🏓', count: '0' },
       { name: 'Strings', icon: '🧵', count: '0' },
       { name: 'Shoes', icon: '👟', count: '0' },
       { name: 'Bags', icon: '🧳', count: '0' },
