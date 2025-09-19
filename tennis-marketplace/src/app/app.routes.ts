@@ -49,6 +49,11 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
   {
+    path: 'looking-for/:id/edit',
+    loadComponent: () => import('./pages/create-looking-for.component').then(m => m.CreateLookingForComponent),
+    canActivate: [AuthGuard]
+  },
+  {
     path: 'looking-for/:id',
     loadComponent: () => import('./pages/looking-for-detail.component').then(m => m.LookingForDetailComponent)
   },

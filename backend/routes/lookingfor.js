@@ -2,6 +2,7 @@ import express from 'express';
 import LookingFor from '../models/LookingFor.js';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import CoinTransaction from '../models/CoinTransaction.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { trackApiUsage, trackProductInteraction } from '../middleware/analytics.js';
 
@@ -185,34 +186,22 @@ router.post('/', authenticate, trackApiUsage('looking_for_create'), async (req, 
       await user.save();
     }
 
-    // Check Looking For post limits based on subscription
-    const activePosts = await LookingFor.countDocuments({
-      buyer: user._id,
-      status: 'active'
-    });
+    // Define coin cost for Looking For request
+    const LOOKING_FOR_COST = 10;
 
-    let maxPosts;
-    switch (user.subscription.plan) {
-      case 'free':
-        maxPosts = 2;
-        break;
-      case 'basic':
-        maxPosts = 5;
-        break;
-      case 'pro':
-        maxPosts = -1; // Unlimited
-        break;
-      default:
-        maxPosts = 2;
-    }
-
-    if (maxPosts !== -1 && activePosts >= maxPosts) {
+    // Check if user has sufficient coins
+    if (user.coins.balance < LOOKING_FOR_COST) {
       return res.status(400).json({
-        error: `You have reached your limit of ${maxPosts} active Looking For posts. Please upgrade your subscription or wait for existing posts to expire.`
+        error: `Insufficient coins. You need ${LOOKING_FOR_COST} coins to create a Looking For request. Your current balance: ${user.coins.balance} coins.`,
+        code: 'INSUFFICIENT_COINS',
+        required: LOOKING_FOR_COST,
+        current: user.coins.balance
       });
     }
 
-    const lookingForPost = new LookingFor({
+
+    // Build the data object conditionally
+    const lookingForData = {
       title,
       description,
       category,
@@ -221,19 +210,51 @@ router.post('/', authenticate, trackApiUsage('looking_for_create'), async (req, 
       condition,
       preferredBrands,
       specifications,
-      location,
       urgency,
       tags,
       buyer: user._id,
       shippingPreferences,
       additionalNotes,
       isUrgent: isUrgent || false
-    });
+    };
+
+    // Only include location if it's provided
+    if (location && (location.city || location.region)) {
+      lookingForData.location = location;
+    }
+
+    const lookingForPost = new LookingFor(lookingForData);
 
     await lookingForPost.save();
     await lookingForPost.populate('buyer', 'firstName lastName rating profilePicture location isVerified');
 
-    res.status(201).json(lookingForPost);
+    // Deduct coins from user's balance
+    user.coins.balance -= LOOKING_FOR_COST;
+    user.coins.totalSpent += LOOKING_FOR_COST;
+    await user.save();
+
+    // Create coin transaction record
+    await CoinTransaction.create({
+      user: user._id,
+      amount: LOOKING_FOR_COST,
+      type: 'spend',
+      reason: 'looking_for_request',
+      description: `Created Looking For request: ${title}`,
+      balanceAfter: user.coins.balance,
+      metadata: {
+        lookingForId: lookingForPost._id,
+        title: title,
+        category: category
+      }
+    });
+
+    console.log(`💰 Deducted ${LOOKING_FOR_COST} coins from user ${user.email} for Looking For request: ${title}`);
+
+    res.status(201).json({
+      ...lookingForPost.toObject(),
+      coinCost: LOOKING_FOR_COST,
+      newBalance: user.coins.balance
+    });
   } catch (error) {
     console.error('Error creating Looking For post:', error);
     res.status(400).json({ error: 'Failed to create Looking For post', details: error.message });
@@ -242,6 +263,7 @@ router.post('/', authenticate, trackApiUsage('looking_for_create'), async (req, 
 
 // PUT /api/lookingfor/:id - Update Looking For post (requires authentication and ownership)
 router.put('/:id', authenticate, async (req, res) => {
+  console.log(`🔄 PUT /api/lookingfor/${req.params.id} - Update request received`);
   try {
     const lookingForPost = await LookingFor.findById(req.params.id);
 
@@ -254,7 +276,8 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'You can only edit your own Looking For posts' });
     }
 
-    // Update allowed fields
+    // Build update object
+    const updateData = {};
     const allowedUpdates = [
       'title', 'description', 'budget', 'condition', 'preferredBrands',
       'specifications', 'location', 'urgency', 'tags', 'shippingPreferences',
@@ -263,17 +286,25 @@ router.put('/:id', authenticate, async (req, res) => {
 
     allowedUpdates.forEach(field => {
       if (req.body[field] !== undefined) {
-        lookingForPost[field] = req.body[field];
+        updateData[field] = req.body[field];
       }
     });
 
-    // Extend expiry when updated
-    lookingForPost.extendExpiry(30);
+    // Extend expiry when updated - set new expiry date
+    updateData.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    await lookingForPost.save();
-    await lookingForPost.populate('buyer', 'firstName lastName rating profilePicture location isVerified');
+    // Use findByIdAndUpdate with $set to avoid parallel save issues
+    const updatedPost = await LookingFor.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      {
+        new: true,
+        runValidators: true,
+        lean: false // Ensure we get a mongoose document back
+      }
+    ).populate('buyer', 'firstName lastName rating profilePicture location isVerified');
 
-    res.json(lookingForPost);
+    res.json(updatedPost);
   } catch (error) {
     console.error('Error updating Looking For post:', error);
     res.status(400).json({ error: 'Failed to update Looking For post', details: error.message });
@@ -445,7 +476,8 @@ router.post('/:id/extend', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'You can only extend your own Looking For posts' });
     }
 
-    await lookingForPost.extendExpiry(days);
+    lookingForPost.extendExpiry(days);
+    await lookingForPost.save();
 
     res.json({
       message: `Looking For post extended by ${days} days successfully`,

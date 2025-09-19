@@ -113,11 +113,11 @@ const lookingForSchema = new mongoose.Schema({
   location: {
     city: {
       type: String,
-      required: true
+      required: false
     },
     region: {
       type: String,
-      required: true
+      required: false
     },
     meetupLocations: [{
       type: String
@@ -233,7 +233,8 @@ lookingForSchema.methods.markFulfilled = function() {
 // Method to extend expiry
 lookingForSchema.methods.extendExpiry = function(days = 30) {
   this.expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-  return this.save();
+  // Return this for chaining instead of saving immediately
+  return this;
 };
 
 // Pre-save middleware to handle expiration

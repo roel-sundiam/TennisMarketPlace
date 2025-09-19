@@ -80,6 +80,14 @@ const corsOptions = {
 app.use(limiter);
 app.use(cors(corsOptions));
 
+// Global request logger
+app.use((req, res, next) => {
+  if (req.method === 'PUT') {
+    console.log(`🔥 INCOMING PUT REQUEST: ${req.method} ${req.path} ${req.url}`);
+  }
+  next();
+});
+
 // Analytics tracking middleware (before routes)
 app.use(trackPageView);
 

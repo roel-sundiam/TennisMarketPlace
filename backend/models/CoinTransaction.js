@@ -39,6 +39,7 @@ const coinTransactionSchema = new mongoose.Schema({
       'priority_support',
       'transaction_fee',
       'admin_deduct',
+      'looking_for_request',
       
       // Purchase/refund
       'coin_purchase',

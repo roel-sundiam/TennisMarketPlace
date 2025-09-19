@@ -3299,8 +3299,8 @@ export class AdminComponent implements OnInit {
       'Delete',
       'Cancel'
     ).subscribe({
-      next: (result) => {
-        if (result.confirmed) {
+      next: (confirmed) => {
+        if (confirmed) {
           this.adminService.deleteProduct(productId).subscribe({
             next: (response) => {
               // Remove the product from the local array

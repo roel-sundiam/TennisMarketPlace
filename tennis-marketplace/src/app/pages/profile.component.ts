@@ -1229,8 +1229,8 @@ export class ProfileComponent implements OnInit {
       `Are you sure you want to delete "${product.title}"? This action cannot be undone.`,
       'Delete',
       'Cancel'
-    ).subscribe(result => {
-      if (result.confirmed) {
+    ).subscribe(confirmed => {
+      if (confirmed) {
         this.productService.deleteProduct(product._id).subscribe({
           next: () => {
             // Remove from list
@@ -1276,8 +1276,8 @@ export class ProfileComponent implements OnInit {
       `Are you sure you want to mark "${product.title}" as sold? This will deduct a 10% transaction fee (₱${Math.ceil(product.price * 0.10)}) from your coin balance.`,
       'Mark as Sold',
       'Cancel'
-    ).subscribe(result => {
-      if (result.confirmed) {
+    ).subscribe(confirmed => {
+      if (confirmed) {
         this.productService.markAsSold(product._id).subscribe({
           next: (response) => {
             // Update product in list
@@ -1597,8 +1597,8 @@ export class ProfileComponent implements OnInit {
       <p class="mt-3 font-medium">Your documents will be reviewed within 2-3 business days.</p>`,
       'Proceed with Upload',
       'Cancel'
-    ).subscribe(result => {
-      if (!result.confirmed) return;
+    ).subscribe(confirmed => {
+      if (!confirmed) return;
 
     // Mock document upload process
     // In real app, this would open a document upload modal

@@ -493,6 +493,7 @@ export class LookingForDetailComponent implements OnInit {
     private lookingForService: LookingForService,
     public authService: AuthService,
     private notificationService: NotificationService,
+    private modalService: ModalService,
     private fb: FormBuilder
   ) {
     this.responseForm = this.createResponseForm();
@@ -583,18 +584,25 @@ export class LookingForDetailComponent implements OnInit {
   markAsFulfilled() {
     if (!this.post()) return;
 
-    if (confirm('Are you sure you want to mark this request as fulfilled? This action cannot be undone.')) {
-      this.lookingForService.markAsFulfilled(this.post()!._id).subscribe({
-        next: (response) => {
-          this.post.set(response.lookingForPost);
-          this.notificationService.success('Request marked as fulfilled');
-        },
-        error: (error) => {
-          console.error('Error marking as fulfilled:', error);
-          this.notificationService.error('Failed to mark as fulfilled');
-        }
-      });
-    }
+    this.modalService.confirm(
+      'Mark as Fulfilled',
+      'Are you sure you want to mark this request as fulfilled? This action cannot be undone.',
+      'Mark as Fulfilled',
+      'Cancel'
+    ).subscribe(confirmed => {
+      if (confirmed) {
+        this.lookingForService.markAsFulfilled(this.post()!._id).subscribe({
+          next: (response) => {
+            this.post.set(response.lookingForPost);
+            this.notificationService.success('Request marked as fulfilled');
+          },
+          error: (error) => {
+            console.error('Error marking as fulfilled:', error);
+            this.notificationService.error('Failed to mark as fulfilled');
+          }
+        });
+      }
+    });
   }
 
   extendExpiry() {

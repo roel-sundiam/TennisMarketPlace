@@ -56,25 +56,25 @@ import { Subscription } from 'rxjs';
           </div>
           
           <!-- Modal Actions -->
-          <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            
+          <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+
             <!-- Cancel Button -->
             <button *ngIf="currentModal()?.showCancel"
                     type="button"
                     (click)="modalService.onCancel()"
-                    class="inline-flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                    class="inline-flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm transition-colors order-2 sm:order-1">
               {{ currentModal()?.cancelText || 'Cancel' }}
             </button>
-            
+
             <!-- Confirm Button -->
             <button type="button"
                     (click)="modalService.onConfirm()"
                     [class]="getConfirmButtonClasses()"
                     [disabled]="isPromptInvalid()"
-                    class="inline-flex w-full justify-center rounded-lg px-4 py-2 text-base font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:w-auto sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="inline-flex w-full justify-center rounded-lg px-4 py-2 text-base font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:w-auto sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2">
               {{ currentModal()?.confirmText || 'OK' }}
             </button>
-            
+
           </div>
           
           <!-- Close Button -->

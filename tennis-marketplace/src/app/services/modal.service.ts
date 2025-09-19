@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface ModalConfig {
   title: string;
@@ -83,7 +84,7 @@ export class ModalService {
   }
 
   // Show confirmation modal
-  confirm(title: string, message: string, confirmText: string = 'Confirm', cancelText: string = 'Cancel'): Observable<ModalResult> {
+  confirm(title: string, message: string, confirmText: string = 'Confirm', cancelText: string = 'Cancel'): Observable<boolean> {
     return this.showModal({
       title,
       message,
@@ -92,7 +93,9 @@ export class ModalService {
       confirmText,
       cancelText,
       showCancel: true
-    });
+    }).pipe(
+      map(result => result.confirmed)
+    );
   }
 
   // Show prompt modal (returns Promise for easier async/await usage)

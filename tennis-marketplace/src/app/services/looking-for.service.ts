@@ -4,6 +4,11 @@ import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
+export interface LookingForCreateResponse extends LookingForPost {
+  coinCost?: number;
+  newBalance?: number;
+}
+
 export interface LookingForPost {
   _id: string;
   title: string;
@@ -119,7 +124,7 @@ export interface CreateLookingForRequest {
   condition: string[];
   preferredBrands?: string[];
   specifications?: any;
-  location: {
+  location?: {
     city: string;
     region: string;
     meetupLocations?: string[];
@@ -213,8 +218,8 @@ export class LookingForService {
   }
 
   // Create new Looking For post
-  createLookingForPost(postData: CreateLookingForRequest): Observable<LookingForPost> {
-    return this.http.post<LookingForPost>(this.apiUrl, postData, {
+  createLookingForPost(postData: CreateLookingForRequest): Observable<LookingForCreateResponse> {
+    return this.http.post<LookingForCreateResponse>(this.apiUrl, postData, {
       headers: this.getHeaders()
     });
   }

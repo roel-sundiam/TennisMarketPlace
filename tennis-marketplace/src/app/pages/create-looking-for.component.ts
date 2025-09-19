@@ -1,11 +1,12 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
-import { RouterLink, Router } from '@angular/router';
-import { LookingForService, CreateLookingForRequest } from '../services/looking-for.service';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
+import { LookingForService, CreateLookingForRequest, LookingForCreateResponse, LookingForPost } from '../services/looking-for.service';
 import { AuthService, User } from '../services/auth.service';
-import { LocationService } from '../services/location.service';
 import { NotificationService } from '../services/notification.service';
+import { CoinService } from '../services/coin.service';
+import { ModalService } from '../services/modal.service';
 
 @Component({
   selector: 'app-create-looking-for',
@@ -25,8 +26,8 @@ import { NotificationService } from '../services/notification.service';
               </a>
               <span class="text-gray-400 hidden sm:inline">›</span>
               <h2 class="text-sm sm:text-lg font-semibold text-gray-700 truncate">
-                <span class="hidden sm:inline">Looking For</span>
-                <span class="sm:hidden">LF</span>
+                <span class="hidden sm:inline">{{ isEditMode() ? 'Edit Request' : 'Looking For' }}</span>
+                <span class="sm:hidden">{{ isEditMode() ? 'Edit' : 'LF' }}</span>
               </h2>
             </div>
 
@@ -39,8 +40,44 @@ import { NotificationService } from '../services/notification.service';
         </div>
       </header>
 
+      <!-- Coin Info Banner - only show in create mode -->
+      <div *ngIf="!isEditMode()" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 mb-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="bg-yellow-400 rounded-full p-2">
+                <svg class="w-5 h-5 text-yellow-800" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.51-1.31c-.562-.649-1.413-1.076-2.353-1.253V5z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="font-semibold text-yellow-800">💰 Looking For Request Cost</h4>
+                <p class="text-sm text-yellow-700">Creating a Looking For request costs <strong>10 coins</strong></p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-yellow-700">Your balance:</p>
+              <p class="text-xl font-bold text-yellow-800">{{ coinService.coinBalance().balance }} coins</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading()" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-8">
+        <div class="bg-white rounded-xl border border-green-200 p-8 text-center">
+          <div class="flex items-center justify-center space-x-2">
+            <svg class="w-6 h-6 animate-spin text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span class="text-gray-600">Loading Looking For request...</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Main Form -->
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div *ngIf="!isLoading()" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-8">
         <form [formGroup]="lookingForForm" (ngSubmit)="onSubmit()" class="space-y-6 sm:space-y-8">
 
           <!-- Basic Information -->
@@ -153,6 +190,7 @@ import { NotificationService } from '../services/notification.service';
                     <input
                       type="checkbox"
                       [value]="condition"
+                      [checked]="isConditionSelected(condition)"
                       (change)="onConditionChange($event)"
                       class="form-checkbox h-4 w-4 text-green-600 rounded">
                     <span class="ml-2 text-sm text-gray-700">{{ condition }}</span>
@@ -191,64 +229,6 @@ import { NotificationService } from '../services/notification.service';
             </div>
           </div>
 
-          <!-- Location -->
-          <div class="bg-white rounded-xl sm:rounded-2xl border border-green-200 p-4 sm:p-6">
-            <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">📍 Location & Meetup</h3>
-
-            <div class="space-y-4">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-semibold text-gray-700 mb-2">City *</label>
-                  <select formControlName="city"
-                          class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    <option value="">Select City</option>
-                    <option *ngFor="let city of cities" [value]="city.name">{{ city.name }}</option>
-                  </select>
-                  <div *ngIf="lookingForForm.get('city')?.errors?.['required'] && lookingForForm.get('city')?.touched"
-                       class="mt-1 text-sm text-red-600">City is required</div>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-semibold text-gray-700 mb-2">Region *</label>
-                  <select formControlName="region"
-                          class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    <option value="">Select Region</option>
-                    <option *ngFor="let region of regions" [value]="region">{{ region }}</option>
-                  </select>
-                  <div *ngIf="lookingForForm.get('region')?.errors?.['required'] && lookingForForm.get('region')?.touched"
-                       class="mt-1 text-sm text-red-600">Region is required</div>
-                </div>
-              </div>
-
-              <!-- Shipping Preferences -->
-              <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">How would you like to receive the item?</label>
-                <div class="space-y-2">
-                  <label class="flex items-center">
-                    <input
-                      type="checkbox"
-                      formControlName="meetup"
-                      class="form-checkbox h-4 w-4 text-green-600 rounded">
-                    <span class="ml-2 text-sm text-gray-700">Meetup in person</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input
-                      type="checkbox"
-                      formControlName="delivery"
-                      class="form-checkbox h-4 w-4 text-green-600 rounded">
-                    <span class="ml-2 text-sm text-gray-700">Local delivery</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input
-                      type="checkbox"
-                      formControlName="shipping"
-                      class="form-checkbox h-4 w-4 text-green-600 rounded">
-                    <span class="ml-2 text-sm text-gray-700">Shipping nationwide</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <!-- Additional Options -->
           <div class="bg-white rounded-xl sm:rounded-2xl border border-green-200 p-4 sm:p-6">
@@ -315,27 +295,19 @@ import { NotificationService } from '../services/notification.service';
             </button>
             <button
               type="submit"
-              [disabled]="lookingForForm.invalid || isSubmitting()"
+              [disabled]="lookingForForm.invalid || isSubmitting() || (!isEditMode() && coinService.coinBalance().balance < 10)"
               class="flex-1 px-6 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2">
               <svg *ngIf="isSubmitting()" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
               </svg>
-              <span>{{ isSubmitting() ? 'Posting...' : 'Post Looking For Request' }}</span>
+              <span>{{
+                isSubmitting() ? (isEditMode() ? 'Updating...' : 'Posting...') :
+                (!isEditMode() && coinService.coinBalance().balance < 10) ? 'Insufficient Coins (Need 10)' :
+                isEditMode() ? 'Update Request' : 'Post Looking For Request'
+              }}</span>
             </button>
           </div>
 
-          <!-- Subscription Notice -->
-          <div *ngIf="subscriptionLimits()" class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-              </svg>
-              <div class="text-sm text-blue-800">
-                <p class="font-medium mb-1">Subscription Limits</p>
-                <p>{{ subscriptionLimits() }}</p>
-              </div>
-            </div>
-          </div>
 
         </form>
       </div>
@@ -346,27 +318,106 @@ export class CreateLookingForComponent implements OnInit {
   lookingForForm: FormGroup;
   currentUser = signal<User | null>(null);
   isSubmitting = signal(false);
-  subscriptionLimits = signal<string>('');
+  isEditMode = signal(false);
+  isLoading = signal(false);
+  postId = signal<string | null>(null);
 
   conditions = ['New', 'Like New', 'Excellent', 'Good', 'Fair'];
-  cities: any[] = [];
-  regions: string[] = [];
 
   constructor(
     private fb: FormBuilder,
     private lookingForService: LookingForService,
     private authService: AuthService,
-    private locationService: LocationService,
     private notificationService: NotificationService,
-    private router: Router
+    public coinService: CoinService,
+    private modalService: ModalService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.lookingForForm = this.createForm();
   }
 
   ngOnInit() {
     this.currentUser.set(this.authService.currentUser());
-    this.loadLocationData();
-    this.loadSubscriptionLimits();
+    // Load coin balance
+    this.coinService.loadCoinBalance().subscribe();
+
+    // Check if we're in edit mode by looking for an ID parameter
+    const id = this.route.snapshot.params['id'];
+    if (id) {
+      this.postId.set(id);
+      this.isEditMode.set(true);
+      this.loadLookingForPost(id);
+    }
+  }
+
+  loadLookingForPost(id: string) {
+    this.isLoading.set(true);
+    this.lookingForService.getLookingForPost(id).subscribe({
+      next: (post) => {
+        this.populateForm(post);
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Error loading Looking For post:', error);
+        this.notificationService.error('Failed to load Looking For post');
+        this.router.navigate(['/looking-for']);
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  populateForm(post: LookingForPost) {
+    // Update form values
+    this.lookingForForm.patchValue({
+      title: post.title,
+      description: post.description,
+      category: post.category,
+      urgency: post.urgency,
+      budgetMin: post.budget.min,
+      budgetMax: post.budget.max,
+      isUrgent: post.isUrgent,
+      additionalNotes: post.additionalNotes || ''
+    });
+
+    // Handle condition array
+    const conditionArray = this.conditionArray;
+    conditionArray.clear();
+    if (post.condition && post.condition.length > 0) {
+      post.condition.forEach(condition => {
+        conditionArray.push(this.fb.control(condition));
+      });
+    }
+
+    // Handle preferred brands array
+    const brandsArray = this.preferredBrandsArray;
+    brandsArray.clear();
+    if (post.preferredBrands && post.preferredBrands.length > 0) {
+      post.preferredBrands.forEach(brand => {
+        brandsArray.push(this.fb.control(brand));
+      });
+    }
+
+    // Handle tags array
+    const tagsArray = this.tagsArray;
+    tagsArray.clear();
+    if (post.tags && post.tags.length > 0) {
+      post.tags.forEach(tag => {
+        tagsArray.push(this.fb.control(tag));
+      });
+    }
+
+    // Update condition checkboxes to reflect loaded data
+    this.updateConditionCheckboxes(post.condition || []);
+  }
+
+  updateConditionCheckboxes(selectedConditions: string[]) {
+    // This will be used to update the UI state of checkboxes
+    // The actual checkbox state is managed by checking if the condition exists in the FormArray
+  }
+
+  isConditionSelected(condition: string): boolean {
+    return this.conditionArray.controls.some(control => control.value === condition);
   }
 
   createForm(): FormGroup {
@@ -379,11 +430,6 @@ export class CreateLookingForComponent implements OnInit {
       budgetMax: [null, [Validators.required, Validators.min(0)]],
       condition: this.fb.array([]),
       preferredBrands: this.fb.array([]),
-      city: ['', [Validators.required]],
-      region: ['', [Validators.required]],
-      meetup: [true],
-      delivery: [false],
-      shipping: [false],
       isUrgent: [false],
       additionalNotes: [''],
       tags: this.fb.array([])
@@ -444,52 +490,24 @@ export class CreateLookingForComponent implements OnInit {
     }
   }
 
-  loadLocationData() {
-    this.locationService.getCities().subscribe({
-      next: (cities) => {
-        this.cities = cities;
-      },
-      error: (error) => {
-        console.error('Error loading cities:', error);
-      }
-    });
 
-    this.locationService.getRegions().subscribe({
-      next: (regions) => {
-        this.regions = regions;
-      },
-      error: (error) => {
-        console.error('Error loading regions:', error);
-      }
-    });
-  }
-
-  loadSubscriptionLimits() {
-    const user = this.currentUser();
-    if (!user) return;
-
-    const plan = user.subscription?.plan || 'free';
-    let limits = '';
-
-    switch (plan) {
-      case 'free':
-        limits = 'Free Plan: 2 active Looking For posts allowed. Upgrade for more!';
-        break;
-      case 'basic':
-        limits = 'Basic Plan: 5 active Looking For posts allowed.';
-        break;
-      case 'pro':
-        limits = 'Pro Plan: Unlimited Looking For posts.';
-        break;
-      default:
-        limits = 'Free Plan: 2 active Looking For posts allowed.';
-    }
-
-    this.subscriptionLimits.set(limits);
-  }
 
   onSubmit() {
     if (this.lookingForForm.invalid || this.isSubmitting()) return;
+
+    // Check coin balance before proceeding (only for create mode)
+    if (!this.isEditMode()) {
+      const LOOKING_FOR_COST = 10;
+      const currentBalance = this.coinService.coinBalance().balance;
+
+      if (currentBalance < LOOKING_FOR_COST) {
+        this.modalService.error(
+          'Insufficient Coins',
+          `You need ${LOOKING_FOR_COST} coins to create a Looking For request. Your current balance is ${currentBalance} coins. Please purchase more coins to continue.`
+        );
+        return;
+      }
+    }
 
     this.isSubmitting.set(true);
 
@@ -506,34 +524,69 @@ export class CreateLookingForComponent implements OnInit {
       },
       condition: formValue.condition,
       preferredBrands: formValue.preferredBrands.filter((brand: string) => brand.trim()),
-      location: {
-        city: formValue.city,
-        region: formValue.region,
-        willingToTravel: false,
-        maxTravelDistance: 0
-      },
-      shippingPreferences: {
-        meetup: formValue.meetup,
-        delivery: formValue.delivery,
-        shipping: formValue.shipping
-      },
       tags: formValue.tags.filter((tag: string) => tag.trim()),
       additionalNotes: formValue.additionalNotes,
       isUrgent: formValue.isUrgent
     };
 
-    this.lookingForService.createLookingForPost(requestData).subscribe({
-      next: (response) => {
-        this.notificationService.success('Looking For request posted successfully!');
-        this.router.navigate(['/looking-for', response._id]);
-      },
-      error: (error) => {
-        console.error('Error creating Looking For post:', error);
-        this.notificationService.error(
-          error.error?.error || 'Failed to create Looking For request. Please try again.'
-        );
+    if (this.isEditMode()) {
+      // Update existing post
+      const postId = this.postId();
+      if (!postId) {
+        this.notificationService.error('Post ID not found');
         this.isSubmitting.set(false);
+        return;
       }
-    });
+
+      this.lookingForService.updateLookingForPost(postId, requestData).subscribe({
+        next: (response) => {
+          this.isSubmitting.set(false);
+          this.notificationService.success('Looking For request updated successfully!');
+          this.router.navigate(['/looking-for', postId]);
+        },
+        error: (error) => {
+          console.error('Error updating Looking For post:', error);
+          this.notificationService.error(
+            error.error?.error || 'Failed to update Looking For request. Please try again.'
+          );
+          this.isSubmitting.set(false);
+        }
+      });
+    } else {
+      // Create new post
+      this.lookingForService.createLookingForPost(requestData).subscribe({
+        next: (response) => {
+          this.isSubmitting.set(false);
+
+          // Refresh coin balance after successful creation
+          this.coinService.loadCoinBalance().subscribe();
+
+          if (response.coinCost) {
+            this.notificationService.success(
+              `Looking For request posted successfully! ${response.coinCost} coins deducted. New balance: ${response.newBalance} coins.`
+            );
+          } else {
+            this.notificationService.success('Looking For request posted successfully!');
+          }
+          this.router.navigate(['/looking-for', response._id]);
+        },
+        error: (error) => {
+          console.error('Error creating Looking For post:', error);
+
+          // Handle specific coin-related errors
+          if (error.error?.code === 'INSUFFICIENT_COINS') {
+            this.modalService.error(
+              'Insufficient Coins',
+              `You need ${error.error.required} coins to create a Looking For request. Your current balance is ${error.error.current} coins. Please purchase more coins to continue.`
+            );
+          } else {
+            this.notificationService.error(
+              error.error?.error || 'Failed to create Looking For request. Please try again.'
+            );
+          }
+          this.isSubmitting.set(false);
+        }
+      });
+    }
   }
 }
