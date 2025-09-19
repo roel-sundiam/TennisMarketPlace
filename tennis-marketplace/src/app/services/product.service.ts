@@ -9,6 +9,7 @@ export interface Product {
   title: string;
   price: number;
   originalPrice?: number;
+  sport: 'Tennis' | 'Pickleball';
   condition: 'New' | 'Like New' | 'Excellent' | 'Good' | 'Fair';
   category: 'Racquets' | 'Strings' | 'Bags' | 'Balls' | 'Shoes' | 'Apparel' | 'Accessories';
   subcategory?: string;
@@ -83,6 +84,7 @@ export interface ProductsResponse {
 }
 
 export interface ProductFilters {
+  sport?: string;
   category?: string;
   condition?: string;
   priceMin?: number;
@@ -99,6 +101,7 @@ export interface CreateProductRequest {
   description: string;
   price: number;
   originalPrice?: number;
+  sport: string;
   category: string;
   subcategory?: string;
   condition: string;

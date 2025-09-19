@@ -18,6 +18,12 @@ const productSchema = new mongoose.Schema({
     min: 0,
     max: 1000000
   },
+  sport: {
+    type: String,
+    required: true,
+    enum: ['Tennis', 'Pickleball'],
+    default: 'Tennis'
+  },
   category: {
     type: String,
     required: true,
@@ -200,7 +206,7 @@ const productSchema = new mongoose.Schema({
 });
 
 // Indexes for faster queries
-productSchema.index({ category: 1, availability: 1 });
+productSchema.index({ sport: 1, category: 1, availability: 1 });
 productSchema.index({ seller: 1 });
 productSchema.index({ 'location.city': 1 });
 productSchema.index({ price: 1 });
@@ -328,32 +334,36 @@ productSchema.set('toJSON', {
 // Static method to get products with filters
 productSchema.statics.getFiltered = function(filters = {}) {
   const query = { isApproved: 'approved', availability: 'available' };
-  
+
+  if (filters.sport && filters.sport !== 'All') {
+    query.sport = filters.sport;
+  }
+
   if (filters.category && filters.category !== 'All') {
     query.category = filters.category;
   }
-  
+
   if (filters.condition && filters.condition.length > 0) {
     query.condition = { $in: filters.condition };
   }
-  
+
   if (filters.priceMin !== undefined || filters.priceMax !== undefined) {
     query.price = {};
     if (filters.priceMin !== undefined) query.price.$gte = filters.priceMin;
     if (filters.priceMax !== undefined) query.price.$lte = filters.priceMax;
   }
-  
+
   if (filters.city) {
     query['location.city'] = new RegExp(filters.city, 'i');
   }
-  
+
   if (filters.search) {
     query.$text = { $search: filters.search };
   }
-  
+
   // Sort: boosted items first, then by creation date
   const sort = { isBoosted: -1, createdAt: -1 };
-  
+
   return this.find(query)
     .populate('seller', 'firstName lastName rating profilePicture location isVerified')
     .sort(sort);

@@ -3008,6 +3008,7 @@ export class AdminComponent implements OnInit {
       title: adminProduct.title,
       description: adminProduct.description,
       price: adminProduct.price,
+      sport: 'Tennis', // Default to Tennis
       category: adminProduct.category as any, // Cast to match Product's union type
       condition: adminProduct.condition as any, // Cast to match Product's union type
       brand: adminProduct.brand,

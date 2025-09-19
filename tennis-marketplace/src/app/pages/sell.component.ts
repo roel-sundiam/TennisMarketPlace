@@ -644,6 +644,7 @@ export class SellComponent implements OnInit {
       title: formData.title,
       description: formData.description,
       price: parseFloat(formData.price),
+      sport: formData.sport || 'Tennis',
       category: formData.category,
       condition: formData.condition,
       brand: formData.brand,

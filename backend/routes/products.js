@@ -11,6 +11,7 @@ const router = express.Router();
 router.get('/', trackApiUsage('product_browse'), async (req, res) => {
   try {
     const {
+      sport = '',
       category = '',
       condition = '',
       priceMin,
@@ -24,7 +25,11 @@ router.get('/', trackApiUsage('product_browse'), async (req, res) => {
 
     // Build filter object
     const filters = {};
-    
+
+    if (sport && sport !== 'All') {
+      filters.sport = sport;
+    }
+
     if (category && category !== 'All') {
       filters.category = category;
     }
