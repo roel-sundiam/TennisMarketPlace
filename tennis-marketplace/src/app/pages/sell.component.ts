@@ -133,7 +133,7 @@ interface SelectedImage {
                       <option [value]="brand">{{ brand }}</option>
                     }
                   </select>
-                  @if (listingForm.get('brand')?.errors?.['required'] && listingForm.get('brand')?.touched) {
+                  @if (listingForm.get('brand')?.errors?.['required'] && listingForm.get('brand')?.touched && !isCustomBrandMode()) {
                     <p class="mt-1 text-sm text-red-600">Brand is required</p>
                   }
                   <!-- Add "Other" option with text input -->
@@ -423,9 +423,9 @@ interface SelectedImage {
 
           <!-- Submit Buttons -->
           <div class="flex flex-col sm:flex-row gap-4 justify-end">
-            <button 
+            <button
               type="submit"
-              [disabled]="listingForm.invalid || isSubmitting()"
+              [disabled]="!canSubmitForm() || isSubmitting()"
               class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               @if (isSubmitting()) {
                 <span class="flex items-center gap-2">
@@ -496,6 +496,10 @@ export class SellComponent implements OnInit {
   // Modal state
   showLowBalanceModal = signal<boolean>(false);
   showCoinPurchaseModal = signal<boolean>(false);
+
+  // Custom brand/model state
+  isCustomBrandMode = signal<boolean>(false);
+  isCustomModelMode = signal<boolean>(false);
 
   constructor(
     private fb: FormBuilder,
@@ -576,21 +580,24 @@ export class SellComponent implements OnInit {
 
     // Removed listing limit check - all users can create unlimited listings
 
-    if (this.listingForm.valid) {
+    // Handle custom brand/model inputs
+    const finalBrand = this.getFinalBrandValue();
+    const finalModel = this.getFinalModelValue();
+
+    if (!finalBrand) {
+      this.notificationService.warning('Brand required', 'Please select or enter a brand.');
+      this.isSubmitting.set(false);
+      return;
+    }
+
+    // Check form validity (excluding brand field since we handle it separately)
+    const isFormValidExcludingBrand = this.isFormValidExcludingBrand();
+
+    if (isFormValidExcludingBrand) {
       this.isSubmitting.set(true);
-      
+
       const formData = this.listingForm.value;
-      
-      // Handle custom brand/model inputs
-      const finalBrand = this.getFinalBrandValue();
-      const finalModel = this.getFinalModelValue();
-      
-      if (!finalBrand) {
-        this.notificationService.warning('Brand required', 'Please select or enter a brand.');
-        this.isSubmitting.set(false);
-        return;
-      }
-      
+
       // Update form data with final values
       formData.brand = finalBrand;
       formData.model = finalModel;
@@ -694,6 +701,33 @@ export class SellComponent implements OnInit {
         this.markFormGroupTouched(control);
       }
     });
+  }
+
+  private isFormValidExcludingBrand(): boolean {
+    const formValue = this.listingForm.value;
+    const requiredFields = ['title', 'description', 'price', 'condition', 'category', 'city', 'region'];
+
+    for (const field of requiredFields) {
+      const control = this.listingForm.get(field);
+      if (!control || control.invalid || !formValue[field]) {
+        // Mark the invalid control as touched to show validation errors
+        control?.markAsTouched();
+        return false;
+      }
+    }
+
+    // Check that at least one shipping option is selected
+    const hasShippingOption = formValue.meetup || formValue.delivery || formValue.shipping;
+    if (!hasShippingOption) {
+      return false;
+    }
+
+    return true;
+  }
+
+  canSubmitForm(): boolean {
+    const finalBrand = this.getFinalBrandValue();
+    return this.isFormValidExcludingBrand() && !!finalBrand;
   }
 
   // Subscription limits removed - all users can create listings
@@ -933,13 +967,14 @@ export class SellComponent implements OnInit {
     const checkbox = event.target as HTMLInputElement;
     const customBrandDiv = document.querySelector('#customBrandDiv') as HTMLElement | null;
     const customBrandInput = document.querySelector('#customBrandInput') as HTMLInputElement | null;
-    
+
     if (checkbox.checked) {
+      this.isCustomBrandMode.set(true);
       customBrandDiv?.classList.remove('hidden');
       customBrandInput?.focus();
       // Clear dropdown selection
       this.listingForm.patchValue({ brand: '' });
-      
+
       // Add event listener for custom input changes
       if (customBrandInput) {
         customBrandInput.addEventListener('input', () => {
@@ -947,6 +982,7 @@ export class SellComponent implements OnInit {
         });
       }
     } else {
+      this.isCustomBrandMode.set(false);
       customBrandDiv?.classList.add('hidden');
       if (customBrandInput) {
         customBrandInput.value = '';
@@ -960,13 +996,14 @@ export class SellComponent implements OnInit {
     const checkbox = event.target as HTMLInputElement;
     const customModelDiv = document.querySelector('#customModelDiv') as HTMLElement | null;
     const customModelInput = document.querySelector('#customModelInput') as HTMLInputElement | null;
-    
+
     if (checkbox.checked) {
+      this.isCustomModelMode.set(true);
       customModelDiv?.classList.remove('hidden');
       customModelInput?.focus();
       // Clear dropdown selection
       this.listingForm.patchValue({ model: '' });
-      
+
       // Add event listener for custom input changes
       if (customModelInput) {
         customModelInput.addEventListener('input', () => {
@@ -974,6 +1011,7 @@ export class SellComponent implements OnInit {
         });
       }
     } else {
+      this.isCustomModelMode.set(false);
       customModelDiv?.classList.add('hidden');
       if (customModelInput) {
         customModelInput.value = '';
