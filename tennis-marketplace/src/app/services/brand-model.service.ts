@@ -22,6 +22,86 @@ export interface BrandModelCache {
   };
 }
 
+export interface PickleballSpecifications {
+  paddleTypes: string[];
+  weights: string[];
+  surfaces: string[];
+  gripSizes: string[];
+  coreTypes: string[];
+  shapes: string[];
+}
+
+export interface PickleballSearchFilters {
+  paddleType?: string;
+  weight?: string;
+  surface?: string;
+  gripSize?: string;
+  coreType?: string;
+  usapaApproved?: boolean;
+}
+
+export interface PickleballSearchResult {
+  brand: string;
+  logo?: string;
+  models: Array<{
+    name: string;
+    isPopular: boolean;
+    year?: string;
+    specifications?: {
+      weight?: string;
+      gripSize?: string;
+      paddleType?: string;
+      surface?: string;
+      coreType?: string;
+      shape?: string;
+      usapaApproved?: boolean;
+      indoorOutdoor?: string;
+    };
+  }>;
+}
+
+export interface TennisRacketSpecifications {
+  headSizes: string[];
+  racketWeights: string[];
+  stringPatterns: string[];
+  balances: string[];
+  stiffnesses: string[];
+  swingWeights: string[];
+  playerLevels: string[];
+  playStyles: string[];
+}
+
+export interface TennisRacketSearchFilters {
+  headSize?: string;
+  racketWeight?: string;
+  stringPattern?: string;
+  balance?: string;
+  stiffness?: string;
+  swingWeight?: string;
+  playerLevel?: string;
+  playStyle?: string;
+}
+
+export interface TennisRacketSearchResult {
+  brand: string;
+  logo?: string;
+  models: Array<{
+    name: string;
+    isPopular: boolean;
+    year?: string;
+    specifications?: {
+      headSize?: string;
+      racketWeight?: string;
+      stringPattern?: string;
+      balance?: string;
+      stiffness?: string;
+      swingWeight?: string;
+      playerLevel?: string;
+      playStyle?: string;
+    };
+  }>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -199,5 +279,113 @@ export class BrandModelService {
       }
       return newSet;
     });
+  }
+
+  /**
+   * Search pickleball paddles with advanced filters
+   */
+  searchPickleballPaddles(filters: PickleballSearchFilters): Observable<PickleballSearchResult[]> {
+    const params = new URLSearchParams();
+
+    if (filters.paddleType) params.set('paddleType', filters.paddleType);
+    if (filters.weight) params.set('weight', filters.weight);
+    if (filters.surface) params.set('surface', filters.surface);
+    if (filters.gripSize) params.set('gripSize', filters.gripSize);
+    if (filters.coreType) params.set('coreType', filters.coreType);
+    if (filters.usapaApproved !== undefined) params.set('usapaApproved', filters.usapaApproved.toString());
+
+    const queryString = params.toString();
+    const url = `${this.apiUrl}/pickleball/search${queryString ? '?' + queryString : ''}`;
+
+    return this.http.get<{ results: PickleballSearchResult[] }>(url).pipe(
+      map(response => response.results),
+      catchError(error => {
+        console.error('Error searching pickleball paddles:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Get available pickleball specifications for filtering
+   */
+  getPickleballSpecifications(): Observable<PickleballSpecifications> {
+    return this.http.get<{ specifications: PickleballSpecifications }>(`${this.apiUrl}/pickleball/specifications`).pipe(
+      map(response => response.specifications),
+      catchError(error => {
+        console.error('Error fetching pickleball specifications:', error);
+        return of({
+          paddleTypes: [],
+          weights: [],
+          surfaces: [],
+          gripSizes: [],
+          coreTypes: [],
+          shapes: []
+        });
+      })
+    );
+  }
+
+  /**
+   * Search tennis rackets with advanced filters
+   */
+  searchTennisRackets(filters: TennisRacketSearchFilters): Observable<TennisRacketSearchResult[]> {
+    const params = new URLSearchParams();
+
+    if (filters.headSize) params.set('headSize', filters.headSize);
+    if (filters.racketWeight) params.set('racketWeight', filters.racketWeight);
+    if (filters.stringPattern) params.set('stringPattern', filters.stringPattern);
+    if (filters.balance) params.set('balance', filters.balance);
+    if (filters.stiffness) params.set('stiffness', filters.stiffness);
+    if (filters.swingWeight) params.set('swingWeight', filters.swingWeight);
+    if (filters.playerLevel) params.set('playerLevel', filters.playerLevel);
+    if (filters.playStyle) params.set('playStyle', filters.playStyle);
+
+    const queryString = params.toString();
+    const url = `${this.apiUrl}/tennis/search${queryString ? '?' + queryString : ''}`;
+
+    return this.http.get<{ results: TennisRacketSearchResult[] }>(url).pipe(
+      map(response => response.results),
+      catchError(error => {
+        console.error('Error searching tennis rackets:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Get available tennis racket specifications for filtering
+   */
+  getTennisRacketSpecifications(): Observable<TennisRacketSpecifications> {
+    return this.http.get<{ specifications: TennisRacketSpecifications }>(`${this.apiUrl}/tennis/specifications`).pipe(
+      map(response => response.specifications),
+      catchError(error => {
+        console.error('Error fetching tennis racket specifications:', error);
+        return of({
+          headSizes: [],
+          racketWeights: [],
+          stringPatterns: [],
+          balances: [],
+          stiffnesses: [],
+          swingWeights: [],
+          playerLevels: [],
+          playStyles: []
+        });
+      })
+    );
+  }
+
+  /**
+   * Check if category is pickleball-related
+   */
+  isPickleballCategory(category: string): boolean {
+    return category === 'Pickleball Paddles';
+  }
+
+  /**
+   * Check if category is tennis-related
+   */
+  isTennisCategory(category: string): boolean {
+    return category === 'Racquets';
   }
 }

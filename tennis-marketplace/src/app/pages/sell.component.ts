@@ -5,7 +5,7 @@ import { RouterLink, Router } from '@angular/router';
 import { ProductService } from '../services/product.service';
 import { AuthService, User } from '../services/auth.service';
 import { UploadService } from '../services/upload.service';
-import { BrandModelService } from '../services/brand-model.service';
+import { BrandModelService, PickleballSpecifications, PickleballSearchFilters, TennisRacketSpecifications, TennisRacketSearchFilters } from '../services/brand-model.service';
 import { LocationService } from '../services/location.service';
 import { NotificationService } from '../services/notification.service';
 import { CoinService } from '../services/coin.service';
@@ -139,7 +139,7 @@ interface SelectedImage {
                   <!-- Add "Other" option with text input -->
                   <div class="mt-2">
                     <label class="flex items-center text-sm text-gray-600">
-                      <input type="checkbox" class="mr-2" (change)="toggleCustomBrand($event)">
+                      <input type="checkbox" id="customBrandCheckbox" class="mr-2" (change)="toggleCustomBrand($event)">
                       Brand not listed? Enter custom brand
                     </label>
                   </div>
@@ -168,7 +168,7 @@ interface SelectedImage {
                   <!-- Add "Other" option with text input -->
                   <div class="mt-2">
                     <label class="flex items-center text-sm text-gray-600">
-                      <input type="checkbox" class="mr-2" (change)="toggleCustomModel($event)">
+                      <input type="checkbox" id="customModelCheckbox" class="mr-2" (change)="toggleCustomModel($event)">
                       Model not listed? Enter custom model
                     </label>
                   </div>
@@ -188,16 +188,271 @@ interface SelectedImage {
               <!-- Custom model input (hidden by default) -->
               <div id="customModelDiv" class="hidden">
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Custom Model</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   id="customModelInput"
                   placeholder="Enter model name"
                   class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
               </div>
 
+              <!-- Enhanced Pickleball Filters -->
+              @if (isPickleballCategory()) {
+                <div class="border-t border-gray-200 pt-4 mt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-md font-semibold text-gray-800">🏓 Pickleball Specifications</h4>
+                    <button
+                      type="button"
+                      (click)="togglePickleballFilters()"
+                      class="text-sm text-green-600 hover:text-green-700 focus:outline-none">
+                      {{ showPickleballFilters() ? 'Hide Filters' : 'Show Advanced Filters' }}
+                    </button>
+                  </div>
+
+                  @if (showPickleballFilters()) {
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-green-50 rounded-lg">
+                      <!-- Paddle Type Filter -->
+                      @if (pickleballSpecs().paddleTypes.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Paddle Type</label>
+                          <select
+                            (change)="onPickleballSpecChange('paddleType', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Type</option>
+                            @for (type of pickleballSpecs().paddleTypes; track type) {
+                              <option [value]="type">{{ type }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Weight Filter -->
+                      @if (pickleballSpecs().weights.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Weight</label>
+                          <select
+                            (change)="onPickleballSpecChange('weight', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Weight</option>
+                            @for (weight of pickleballSpecs().weights; track weight) {
+                              <option [value]="weight">{{ weight }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Surface Filter -->
+                      @if (pickleballSpecs().surfaces.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Surface</label>
+                          <select
+                            (change)="onPickleballSpecChange('surface', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Surface</option>
+                            @for (surface of pickleballSpecs().surfaces; track surface) {
+                              <option [value]="surface">{{ surface }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Grip Size Filter -->
+                      @if (pickleballSpecs().gripSizes.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Grip Size</label>
+                          <select
+                            (change)="onPickleballSpecChange('gripSize', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Grip Size</option>
+                            @for (grip of pickleballSpecs().gripSizes; track grip) {
+                              <option [value]="grip">{{ grip }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Core Type Filter -->
+                      @if (pickleballSpecs().coreTypes.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Core Type</label>
+                          <select
+                            (change)="onPickleballSpecChange('coreType', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Core</option>
+                            @for (core of pickleballSpecs().coreTypes; track core) {
+                              <option [value]="core">{{ core }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- USAPA Approved -->
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">USAPA Approved</label>
+                        <select
+                          (change)="onPickleballSpecChange('usapaApproved', $event)"
+                          class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                          <option value="">Any</option>
+                          <option value="true">Yes</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="mt-3 text-xs text-gray-600 bg-blue-50 p-3 rounded-lg">
+                      💡 <strong>Tip:</strong> Use these filters to find specific paddle types that match your playing style.
+                      Control paddles offer precision, Power paddles provide extra pop, and All-Around paddles balance both features.
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Enhanced Tennis Racket Filters -->
+              @if (isTennisCategory()) {
+                <div class="border-t border-gray-200 pt-4 mt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-md font-semibold text-gray-800">🎾 Tennis Racket Specifications</h4>
+                    <button
+                      type="button"
+                      (click)="toggleTennisFilters()"
+                      class="text-sm text-green-600 hover:text-green-700 focus:outline-none">
+                      {{ showTennisFilters() ? 'Hide Filters' : 'Show Advanced Filters' }}
+                    </button>
+                  </div>
+
+                  @if (showTennisFilters()) {
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-green-50 rounded-lg">
+                      <!-- Head Size Filter -->
+                      @if (tennisSpecs().headSizes.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Head Size</label>
+                          <select
+                            (change)="onTennisSpecChange('headSize', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Size</option>
+                            @for (size of tennisSpecs().headSizes; track size) {
+                              <option [value]="size">{{ size }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Racket Weight Filter -->
+                      @if (tennisSpecs().racketWeights.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Racket Weight</label>
+                          <select
+                            (change)="onTennisSpecChange('racketWeight', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Weight</option>
+                            @for (weight of tennisSpecs().racketWeights; track weight) {
+                              <option [value]="weight">{{ weight }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- String Pattern Filter -->
+                      @if (tennisSpecs().stringPatterns.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">String Pattern</label>
+                          <select
+                            (change)="onTennisSpecChange('stringPattern', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Pattern</option>
+                            @for (pattern of tennisSpecs().stringPatterns; track pattern) {
+                              <option [value]="pattern">{{ pattern }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Balance Filter -->
+                      @if (tennisSpecs().balances.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Balance</label>
+                          <select
+                            (change)="onTennisSpecChange('balance', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Balance</option>
+                            @for (balance of tennisSpecs().balances; track balance) {
+                              <option [value]="balance">{{ balance }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Stiffness Filter -->
+                      @if (tennisSpecs().stiffnesses.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Stiffness</label>
+                          <select
+                            (change)="onTennisSpecChange('stiffness', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Stiffness</option>
+                            @for (stiffness of tennisSpecs().stiffnesses; track stiffness) {
+                              <option [value]="stiffness">{{ stiffness }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Player Level Filter -->
+                      @if (tennisSpecs().playerLevels.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Player Level</label>
+                          <select
+                            (change)="onTennisSpecChange('playerLevel', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Level</option>
+                            @for (level of tennisSpecs().playerLevels; track level) {
+                              <option [value]="level">{{ level }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Play Style Filter -->
+                      @if (tennisSpecs().playStyles.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Play Style</label>
+                          <select
+                            (change)="onTennisSpecChange('playStyle', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Style</option>
+                            @for (style of tennisSpecs().playStyles; track style) {
+                              <option [value]="style">{{ style }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+
+                      <!-- Swing Weight Filter -->
+                      @if (tennisSpecs().swingWeights.length > 0) {
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-2">Swing Weight</label>
+                          <select
+                            (change)="onTennisSpecChange('swingWeight', $event)"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm">
+                            <option value="">Any Swing Weight</option>
+                            @for (weight of tennisSpecs().swingWeights; track weight) {
+                              <option [value]="weight">{{ weight }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
+                    </div>
+
+                    <div class="mt-3 text-xs text-gray-600 bg-blue-50 p-3 rounded-lg">
+                      💡 <strong>Tip:</strong> Use these filters to find rackets that match your playing style.
+                      Heavier rackets provide more power, while lighter ones offer better maneuverability.
+                    </div>
+                  }
+                </div>
+              }
+
               <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Description *</label>
-                <textarea 
+                <textarea
                   formControlName="description"
                   rows="4"
                   placeholder="Describe your item in detail..."
@@ -344,6 +599,7 @@ interface SelectedImage {
                   <input 
                     type="checkbox" 
                     formControlName="negotiable"
+                    (change)="updateDescriptionFromAllInputs()"
                     class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                   <span class="ml-2 text-sm text-gray-700">Price is negotiable</span>
                 </label>
@@ -400,6 +656,7 @@ interface SelectedImage {
                   <input 
                     type="checkbox" 
                     formControlName="meetup"
+                    (change)="updateDescriptionFromAllInputs()"
                     class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                   <span class="ml-2 text-sm text-gray-700">Meetup (Face-to-face)</span>
                 </label>
@@ -407,6 +664,7 @@ interface SelectedImage {
                   <input 
                     type="checkbox" 
                     formControlName="delivery"
+                    (change)="updateDescriptionFromAllInputs()"
                     class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                   <span class="ml-2 text-sm text-gray-700">Local Delivery</span>
                 </label>
@@ -414,6 +672,7 @@ interface SelectedImage {
                   <input 
                     type="checkbox" 
                     formControlName="shipping"
+                    (change)="updateDescriptionFromAllInputs()"
                     class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                   <span class="ml-2 text-sm text-gray-700">Nationwide Shipping</span>
                 </label>
@@ -500,6 +759,38 @@ export class SellComponent implements OnInit {
   // Custom brand/model state
   isCustomBrandMode = signal<boolean>(false);
   isCustomModelMode = signal<boolean>(false);
+
+  // Pickleball-specific state
+  pickleballSpecs = signal<PickleballSpecifications>({
+    paddleTypes: [],
+    weights: [],
+    surfaces: [],
+    gripSizes: [],
+    coreTypes: [],
+    shapes: []
+  });
+  isPickleballCategory = signal<boolean>(false);
+  showPickleballFilters = signal<boolean>(false);
+
+  // Tennis-specific state
+  tennisSpecs = signal<TennisRacketSpecifications>({
+    headSizes: [],
+    racketWeights: [],
+    stringPatterns: [],
+    balances: [],
+    stiffnesses: [],
+    swingWeights: [],
+    playerLevels: [],
+    playStyles: []
+  });
+  isTennisCategorySelected = signal<boolean>(false);
+  showTennisFilters = signal<boolean>(false);
+
+  // Selected specifications for description auto-population
+  selectedSpecs = signal<{[key: string]: string}>({});
+
+  // Track last auto-generated text for replacement
+  private lastAutoGeneratedText: string = '';
 
   constructor(
     private fb: FormBuilder,
@@ -824,24 +1115,42 @@ export class SellComponent implements OnInit {
   onCategoryChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const category = target?.value || '';
-    
+
     this.selectedCategory.set(category);
     this.selectedBrand.set('');
-    
+
     // Clear dependent form fields
     this.listingForm.patchValue({
       brand: '',
       model: ''
     });
-    
+
     // Clear dependent dropdowns
     this.availableBrands.set([]);
     this.availableModels.set([]);
-    
+
+    // Check if pickleball category
+    const isPickleball = this.brandModelService.isPickleballCategory(category);
+    this.isPickleballCategory.set(isPickleball);
+
+    // Check if tennis category
+    const isTennis = this.brandModelService.isTennisCategory(category);
+    this.isTennisCategorySelected.set(isTennis);
+
+    if (isPickleball) {
+      // Load pickleball specifications for filtering
+      this.loadPickleballSpecifications();
+    }
+
+    if (isTennis) {
+      // Load tennis specifications for filtering
+      this.loadTennisSpecifications();
+    }
+
     if (category) {
       this.loadBrandsForCategory(category);
     }
-    
+
     // Update title
     this.generateTitle();
   }
@@ -849,38 +1158,104 @@ export class SellComponent implements OnInit {
   onConditionChange(event: Event): void {
     // Update title when condition changes
     this.generateTitle();
+    // Update description with all inputs
+    this.updateDescriptionFromAllInputs();
   }
 
   onBrandChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const brand = target?.value || '';
-    
+
     this.selectedBrand.set(brand);
-    
+
     // Clear model field
     this.listingForm.patchValue({
       model: ''
     });
-    
+
     // Clear models dropdown
     this.availableModels.set([]);
-    
+
+    // If a valid brand is selected from dropdown, clear and hide custom brand input
+    if (brand && !brand.includes('not listed')) {
+      this.isCustomBrandMode.set(false);
+      const customBrandDiv = document.querySelector('#customBrandDiv') as HTMLElement | null;
+      const customBrandInput = document.querySelector('#customBrandInput') as HTMLInputElement | null;
+      const customBrandCheckbox = document.querySelector('#customBrandCheckbox') as HTMLInputElement | null;
+
+      if (customBrandDiv && customBrandInput) {
+        customBrandDiv.classList.add('hidden');
+        customBrandInput.value = '';
+      }
+
+      // Uncheck the custom brand checkbox
+      if (customBrandCheckbox) {
+        customBrandCheckbox.checked = false;
+      }
+    }
+
+    // Also clear and hide custom model input since model was cleared
+    this.isCustomModelMode.set(false);
+    const customModelDiv = document.querySelector('#customModelDiv') as HTMLElement | null;
+    const customModelInput = document.querySelector('#customModelInput') as HTMLInputElement | null;
+    const customModelCheckbox = document.querySelector('#customModelCheckbox') as HTMLInputElement | null;
+
+    if (customModelDiv && customModelInput) {
+      customModelDiv.classList.add('hidden');
+      customModelInput.value = '';
+    }
+
+    // Uncheck the custom model checkbox
+    if (customModelCheckbox) {
+      customModelCheckbox.checked = false;
+    }
+
     if (brand && this.selectedCategory()) {
       this.loadModelsForBrand(this.selectedCategory(), brand);
     }
-    
+
     // Update title
     this.generateTitle();
+
+    // Update description
+    this.updateDescriptionFromAllInputs();
   }
 
   onModelChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const model = target?.value || '';
+
+    // If a valid model is selected from dropdown, clear and hide custom model input
+    if (model && !model.includes('not listed')) {
+      this.isCustomModelMode.set(false);
+      const customModelDiv = document.querySelector('#customModelDiv') as HTMLElement | null;
+      const customModelInput = document.querySelector('#customModelInput') as HTMLInputElement | null;
+
+      if (customModelDiv && customModelInput) {
+        customModelDiv.classList.add('hidden');
+        customModelInput.value = '';
+      }
+
+      // Uncheck the custom model checkbox
+      const customModelCheckbox = document.querySelector('#customModelCheckbox') as HTMLInputElement | null;
+      if (customModelCheckbox) {
+        customModelCheckbox.checked = false;
+      }
+    }
+
     // Update title when model changes
     this.generateTitle();
+
+    // Update description
+    this.updateDescriptionFromAllInputs();
   }
 
   onPriceChange(event: Event): void {
     // Update title when price changes
     this.generateTitle();
+
+    // Update description with price
+    this.updateDescriptionFromAllInputs();
   }
 
   private loadBrandsForCategory(category: string): void {
@@ -976,10 +1351,16 @@ export class SellComponent implements OnInit {
       // Clear dropdown selection
       this.listingForm.patchValue({ brand: '' });
 
-      // Add event listener for custom input changes
+      // Remove existing event listeners to prevent duplicates
       if (customBrandInput) {
-        customBrandInput.addEventListener('input', () => {
+        // Clone the element to remove all existing event listeners
+        const newInput = customBrandInput.cloneNode(true) as HTMLInputElement;
+        customBrandInput.parentNode?.replaceChild(newInput, customBrandInput);
+
+        // Add single event listener to new element
+        newInput.addEventListener('input', () => {
           this.generateTitle();
+          this.updateDescriptionFromAllInputs();
         });
       }
     } else {
@@ -1005,10 +1386,16 @@ export class SellComponent implements OnInit {
       // Clear dropdown selection
       this.listingForm.patchValue({ model: '' });
 
-      // Add event listener for custom input changes
+      // Remove existing event listeners to prevent duplicates
       if (customModelInput) {
-        customModelInput.addEventListener('input', () => {
+        // Clone the element to remove all existing event listeners
+        const newInput = customModelInput.cloneNode(true) as HTMLInputElement;
+        customModelInput.parentNode?.replaceChild(newInput, customModelInput);
+
+        // Add single event listener to new element
+        newInput.addEventListener('input', () => {
           this.generateTitle();
+          this.updateDescriptionFromAllInputs();
         });
       }
     } else {
@@ -1026,27 +1413,35 @@ export class SellComponent implements OnInit {
   private getFinalBrandValue(): string {
     const customBrandInput = document.querySelector('#customBrandInput') as HTMLInputElement | null;
     const customBrandDiv = document.querySelector('#customBrandDiv') as HTMLElement | null;
-    
+
     // If custom brand div is visible, use custom input value
     if (customBrandDiv && !customBrandDiv.classList.contains('hidden') && customBrandInput) {
       return customBrandInput.value.trim();
     }
-    
-    // Otherwise use dropdown value
-    return this.listingForm.get('brand')?.value || '';
+
+    // Otherwise use dropdown value, but filter out placeholder text
+    const dropdownValue = this.listingForm.get('brand')?.value || '';
+    if (dropdownValue && dropdownValue.includes('not listed')) {
+      return '';
+    }
+    return dropdownValue;
   }
 
   private getFinalModelValue(): string {
     const customModelInput = document.querySelector('#customModelInput') as HTMLInputElement | null;
     const customModelDiv = document.querySelector('#customModelDiv') as HTMLElement | null;
-    
+
     // If custom model div is visible, use custom input value
     if (customModelDiv && !customModelDiv.classList.contains('hidden') && customModelInput) {
       return customModelInput.value.trim();
     }
-    
-    // Otherwise use dropdown value
-    return this.listingForm.get('model')?.value || '';
+
+    // Otherwise use dropdown value, but filter out placeholder text
+    const dropdownValue = this.listingForm.get('model')?.value || '';
+    if (dropdownValue && dropdownValue.includes('not listed')) {
+      return '';
+    }
+    return dropdownValue;
   }
 
   // Location-related methods
@@ -1131,5 +1526,170 @@ export class SellComponent implements OnInit {
         }
       });
     }
+  }
+
+  // Pickleball-specific methods
+  private loadPickleballSpecifications(): void {
+    this.brandModelService.getPickleballSpecifications().subscribe({
+      next: (specs) => {
+        this.pickleballSpecs.set(specs);
+      },
+      error: (error) => {
+        console.error('Error loading pickleball specifications:', error);
+      }
+    });
+  }
+
+  private loadTennisSpecifications(): void {
+    this.brandModelService.getTennisRacketSpecifications().subscribe({
+      next: (specs) => {
+        this.tennisSpecs.set(specs);
+      },
+      error: (error) => {
+        console.error('Error loading tennis specifications:', error);
+      }
+    });
+  }
+
+  togglePickleballFilters(): void {
+    this.showPickleballFilters.update(show => !show);
+  }
+
+  toggleTennisFilters(): void {
+    this.showTennisFilters.update(show => !show);
+  }
+
+  isTennisCategory(): boolean {
+    return this.brandModelService.isTennisCategory(this.selectedCategory());
+  }
+
+  onPickleballSpecChange(specType: string, event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const value = target.value;
+
+    if (value) {
+      this.selectedSpecs.update(specs => ({
+        ...specs,
+        [specType]: value
+      }));
+    } else {
+      this.selectedSpecs.update(specs => {
+        const newSpecs = { ...specs };
+        delete newSpecs[specType];
+        return newSpecs;
+      });
+    }
+
+    this.updateDescriptionFromAllInputs();
+  }
+
+  onTennisSpecChange(specType: string, event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const value = target.value;
+
+    if (value) {
+      this.selectedSpecs.update(specs => ({
+        ...specs,
+        [specType]: value
+      }));
+    } else {
+      this.selectedSpecs.update(specs => {
+        const newSpecs = { ...specs };
+        delete newSpecs[specType];
+        return newSpecs;
+      });
+    }
+
+    this.updateDescriptionFromAllInputs();
+  }
+
+  public updateDescriptionFromAllInputs(): void {
+    const formValues = this.listingForm.value;
+    const specs = this.selectedSpecs();
+
+    // Build conversational description
+    let conversationalText = '';
+
+    // Main product introduction
+    if (formValues.brand || formValues.model || formValues.category) {
+      // Get brand: always use getFinalBrandValue which handles both custom and dropdown
+      const brand = this.getFinalBrandValue();
+
+      // Get model: always use getFinalModelValue which handles both custom and dropdown
+      const model = this.getFinalModelValue();
+
+      const productName = [brand, model].filter(Boolean).join(' ');
+      const categoryText = formValues.category ? formValues.category.toLowerCase() : 'item';
+
+      if (productName) {
+        conversationalText = `I am selling my ${productName} ${categoryText}`;
+      } else {
+        conversationalText = `I am selling my ${categoryText}`;
+      }
+    }
+
+    // Add price
+    if (formValues.price) {
+      const priceText = formValues.negotiable ?
+        ` for ₱${formValues.price} (price is negotiable)` :
+        ` for ₱${formValues.price}`;
+      conversationalText += priceText;
+    }
+
+    // Add condition
+    if (formValues.condition) {
+      conversationalText += `. The condition is ${formValues.condition.toLowerCase()}`;
+    }
+
+    // Add location
+    if (formValues.city) {
+      const locationText = formValues.region ?
+        `${formValues.city}, ${formValues.region}` :
+        formValues.city;
+      conversationalText += ` and I'm located in ${locationText}`;
+    }
+
+    conversationalText += '.';
+
+    // Add specifications conversationally if any
+    const specEntries = Object.entries(specs);
+    if (specEntries.length > 0) {
+      conversationalText += '\n\nSpecifications:\n';
+      Object.entries(specs).forEach(([key, value]) => {
+        const formattedKey = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+        const capitalizedKey = formattedKey.charAt(0).toUpperCase() + formattedKey.slice(1);
+        conversationalText += `• ${capitalizedKey}: ${value}\n`;
+      });
+    }
+
+    // Only update if we have meaningful content
+    if (!conversationalText || conversationalText.trim() === 'I am selling my .') {
+      return;
+    }
+
+    // Get current description from form
+    const currentDescription = this.listingForm.get('description')?.value || '';
+
+    // If we have stored the last auto-generated text, remove it from current description
+    let baseDescription = currentDescription;
+    if (this.lastAutoGeneratedText && currentDescription.includes(this.lastAutoGeneratedText)) {
+      baseDescription = currentDescription.replace(this.lastAutoGeneratedText, '').trim();
+    }
+
+    // Combine base description with new auto-generated text
+    let newDescription: string;
+    if (baseDescription.length > 0) {
+      newDescription = baseDescription + '\n\n' + conversationalText;
+    } else {
+      newDescription = conversationalText;
+    }
+
+    // Store the current auto-generated text for future replacements
+    this.lastAutoGeneratedText = conversationalText;
+
+    // Update description without triggering infinite loop
+    this.listingForm.patchValue({
+      description: newDescription
+    }, { emitEvent: false });
   }
 }

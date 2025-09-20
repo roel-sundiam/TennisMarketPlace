@@ -1,7 +1,7 @@
 import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AdminService, AdminProduct, AdminStats, CoinStats, UserCoinDetails, SuspiciousActivities } from '../services/admin.service';
@@ -624,7 +624,9 @@ export interface AnonymousVisitsData {
                             <span class="hidden sm:inline">Reject</span>
                           </button>
 
-                          <button class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25">
+                          <button
+                            (click)="viewListing(listing._id)"
+                            class="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-blue-500/25">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -2568,6 +2570,7 @@ export class AdminComponent implements OnInit {
   private http = inject(HttpClient);
   private modalService = inject(ModalService);
   private authService = inject(AuthService);
+  private router = inject(Router);
   
   activeTab = signal<string>('pending');
   showMobileMenu = signal<boolean>(false);
@@ -3212,6 +3215,15 @@ export class AdminComponent implements OnInit {
         this.modalService.error('Rejection Failed', 'Unable to reject the product. Please try again later.');
       }
     });
+  }
+
+  viewListing(productId: string): void {
+    const product = this.allProducts().find(p => p._id === productId);
+    if (product) {
+      this.router.navigate(['/product', productId]);
+    } else {
+      this.modalService.error('Product Not Found', 'Unable to find the product details.');
+    }
   }
 
   editListing(productId: string): void {

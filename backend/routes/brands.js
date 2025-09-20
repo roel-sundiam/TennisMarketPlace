@@ -158,19 +158,19 @@ router.put('/:id/models', async (req, res) => {
 router.delete('/:id/models/:modelName', async (req, res) => {
   try {
     const { id, modelName } = req.params;
-    
+
     const brandData = await BrandModel.findById(id);
     if (!brandData) {
       return res.status(404).json({ error: 'Brand not found' });
     }
-    
+
     const modelRemoved = brandData.removeModel(modelName);
     if (!modelRemoved) {
       return res.status(404).json({ error: 'Model not found' });
     }
-    
+
     await brandData.save();
-    
+
     res.json({
       message: 'Model removed successfully',
       brand: brandData
@@ -178,6 +178,104 @@ router.delete('/:id/models/:modelName', async (req, res) => {
   } catch (error) {
     console.error('Error removing model:', error);
     res.status(500).json({ error: 'Failed to remove model' });
+  }
+});
+
+// GET /api/brands/pickleball/search - Advanced search for pickleball paddles
+router.get('/pickleball/search', async (req, res) => {
+  try {
+    const filters = {};
+
+    // Parse query parameters for pickleball specifications
+    if (req.query.paddleType) filters.paddleType = req.query.paddleType;
+    if (req.query.weight) filters.weight = req.query.weight;
+    if (req.query.surface) filters.surface = req.query.surface;
+    if (req.query.gripSize) filters.gripSize = req.query.gripSize;
+    if (req.query.coreType) filters.coreType = req.query.coreType;
+    if (req.query.usapaApproved !== undefined) {
+      filters.usapaApproved = req.query.usapaApproved === 'true';
+    }
+
+    const results = await BrandModel.searchPickleballPaddles(filters);
+
+    res.json({
+      filters: filters,
+      results: results
+    });
+  } catch (error) {
+    console.error('Error searching pickleball paddles:', error);
+    res.status(500).json({ error: 'Failed to search pickleball paddles' });
+  }
+});
+
+// GET /api/brands/pickleball/specifications - Get available specification options
+router.get('/pickleball/specifications', async (req, res) => {
+  try {
+    const specifications = await BrandModel.getPickleballSpecifications();
+
+    res.json({
+      specifications: specifications.length > 0 ? specifications[0] : {
+        paddleTypes: [],
+        weights: [],
+        surfaces: [],
+        gripSizes: [],
+        coreTypes: [],
+        shapes: []
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching pickleball specifications:', error);
+    res.status(500).json({ error: 'Failed to fetch specifications' });
+  }
+});
+
+// GET /api/brands/tennis/search - Advanced search for tennis rackets
+router.get('/tennis/search', async (req, res) => {
+  try {
+    const filters = {};
+
+    // Parse query parameters for tennis racket specifications
+    if (req.query.headSize) filters.headSize = req.query.headSize;
+    if (req.query.racketWeight) filters.racketWeight = req.query.racketWeight;
+    if (req.query.stringPattern) filters.stringPattern = req.query.stringPattern;
+    if (req.query.balance) filters.balance = req.query.balance;
+    if (req.query.stiffness) filters.stiffness = req.query.stiffness;
+    if (req.query.swingWeight) filters.swingWeight = req.query.swingWeight;
+    if (req.query.playerLevel) filters.playerLevel = req.query.playerLevel;
+    if (req.query.playStyle) filters.playStyle = req.query.playStyle;
+
+    const results = await BrandModel.searchTennisRackets(filters);
+
+    res.json({
+      filters: filters,
+      results: results
+    });
+  } catch (error) {
+    console.error('Error searching tennis rackets:', error);
+    res.status(500).json({ error: 'Failed to search tennis rackets' });
+  }
+});
+
+// GET /api/brands/tennis/specifications - Get available tennis racket specification options
+router.get('/tennis/specifications', async (req, res) => {
+  try {
+    const specifications = await BrandModel.getTennisRacketSpecifications();
+
+    res.json({
+      specifications: specifications.length > 0 ? specifications[0] : {
+        headSizes: [],
+        racketWeights: [],
+        stringPatterns: [],
+        balances: [],
+        stiffnesses: [],
+        swingWeights: [],
+        playerLevels: [],
+        playStyles: []
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tennis racket specifications:', error);
+    res.status(500).json({ error: 'Failed to fetch tennis specifications' });
   }
 });
 
