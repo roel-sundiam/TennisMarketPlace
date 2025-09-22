@@ -219,6 +219,11 @@ export class AuthService {
     return this.isAuthenticatedSignal() && !!this.currentUser();
   }
 
+  isAdmin(): boolean {
+    const user = this.currentUser();
+    return user?.role === 'admin' || false;
+  }
+
   getToken(): string | null {
     const token = localStorage.getItem(this.TOKEN_KEY);
     console.log('🎫 getToken() called, found token:', token ? `${token.substring(0, 20)}...` : 'null');

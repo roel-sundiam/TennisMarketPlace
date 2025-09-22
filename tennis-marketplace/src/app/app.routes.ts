@@ -27,6 +27,20 @@ export const routes: Routes = [
     canActivate: [AdminGuard]
   },
   {
+    path: 'admin/content',
+    loadComponent: () => import('./pages/content-admin.component').then(m => m.ContentAdminComponent),
+    canActivate: [AdminGuard]
+  },
+  // Public blog routes for SEO and monetization
+  {
+    path: 'blog',
+    loadComponent: () => import('./pages/blog.component').then(m => m.BlogComponent)
+  },
+  {
+    path: 'blog/:category/:slug',
+    loadComponent: () => import('./pages/blog-post.component').then(m => m.BlogPostComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./pages/login.component').then(m => m.LoginComponent)
   },

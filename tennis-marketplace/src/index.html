@@ -2,10 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Baseline Gearhub</title>
+  <title>Tennis Marketplace Philippines - Buy & Sell Tennis Equipment</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Philippines' premier tennis marketplace. Buy and sell tennis rackets, shoes, strings, and equipment. Local sellers, competitive prices, tennis gear reviews and guides.">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  
+  <!-- Google Analytics 4 -->
+  <!-- Replace 'G-XXXXXXXXXX' with your actual GA4 measurement ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX', {
+      // Enhanced measurement for better blog analytics
+      enhanced_measurement: true,
+      // Track outbound affiliate links
+      link_attribution: true,
+      // Custom parameters for tennis marketplace
+      custom_map: {
+        'custom_parameter_1': 'product_category',
+        'custom_parameter_2': 'price_range'
+      }
+    });
+  </script>
 </head>
 <body>
   <app-root></app-root>

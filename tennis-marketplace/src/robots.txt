@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Allow: /blog
+Allow: /blog/*
+Allow: /browse
+Allow: /looking-for
+
+# Block admin pages from search engines
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /sell
+
+# Allow specific important pages
+Allow: /
+
+# Sitemap location
+Sitemap: https://tennis-marketplace.com/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
