@@ -21,6 +21,7 @@ import analyticsRoutes from './routes/analytics.js';
 import reportRoutes from './routes/reports.js';
 import inquiryRoutes from './routes/inquiries-simple.js';
 import lookingForRoutes from './routes/lookingfor.js';
+import contentRoutes from './routes/content.js';
 
 // Import analytics middleware
 import { trackPageView, trackError } from './middleware/analytics.js';
@@ -135,6 +136,7 @@ app.use('/api/analytics', jsonMiddleware, urlencodedMiddleware, analyticsRoutes)
 app.use('/api/reports', jsonMiddleware, urlencodedMiddleware, reportRoutes);
 app.use('/api/inquiries', jsonMiddleware, urlencodedMiddleware, inquiryRoutes);
 app.use('/api/lookingfor', jsonMiddleware, urlencodedMiddleware, lookingForRoutes);
+app.use('/api/content', jsonMiddleware, urlencodedMiddleware, contentRoutes);
 
 // Error handling middleware with analytics tracking
 app.use(trackError);
