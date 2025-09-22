@@ -28,6 +28,8 @@ export interface ContentItem {
   featured: boolean;
   priority: 'high' | 'medium' | 'low';
   url?: string;
+  featuredImage?: string;
+  updatedAt?: Date;
 }
 
 export interface ContentStats {

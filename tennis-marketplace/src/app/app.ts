@@ -20,6 +20,7 @@ import { CoinPurchaseModalComponent } from './components/coin-purchase-modal.com
 import { ReportModalComponent } from './components/report-modal.component';
 import { AnalyticsService } from './services/analytics.service';
 import { ModalService } from './services/modal.service';
+import { BlogService, BlogPost } from './services/blog.service';
 
 @Component({
   selector: 'app-root',
@@ -40,12 +41,17 @@ export class App implements OnInit, OnDestroy {
   private pwaService = inject(PWAService);
   private analyticsService = inject(AnalyticsService);
   private modalService = inject(ModalService);
+  private blogService = inject(BlogService);
   private destroy$ = new Subject<void>();
   
   // Dynamic product data from API
   products = signal<Product[]>([]);
   isLoadingProducts = signal<boolean>(false);
   categories = signal<Array<{name: string, icon: string, count: string}>>([]);
+
+  // Blog data
+  latestBlogPosts = signal<BlogPost[]>([]);
+  isLoadingBlogPosts = signal<boolean>(false);
 
   // Modal state for coin balance restrictions
   showLowBalanceModal = signal<boolean>(false);
@@ -98,6 +104,9 @@ export class App implements OnInit, OnDestroy {
     
     // Load categories
     this.loadCategories();
+    
+    // Load latest blog posts for home page
+    this.loadLatestBlogPosts();
   }
   
   ngOnDestroy() {
@@ -214,6 +223,28 @@ export class App implements OnInit, OnDestroy {
       { name: 'Apparel', icon: '🏃', count: '0' },
       { name: 'Accessories', icon: '⚡', count: '0' }
     ]);
+  }
+
+  // Load latest blog posts for home page
+  private loadLatestBlogPosts(): void {
+    this.isLoadingBlogPosts.set(true);
+    console.log('📝 Loading latest blog posts for home page...');
+    
+    this.blogService.getFeaturedPosts(3)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (posts) => {
+          console.log('✅ Latest blog posts loaded:', posts);
+          this.latestBlogPosts.set(posts);
+          this.isLoadingBlogPosts.set(false);
+        },
+        error: (error) => {
+          console.error('❌ Failed to load blog posts:', error);
+          this.isLoadingBlogPosts.set(false);
+          // Don't show error to user, just silently fail
+          this.latestBlogPosts.set([]);
+        }
+      });
   }
 
   favoriteProducts = new Set<string>();
@@ -426,5 +457,18 @@ export class App implements OnInit, OnDestroy {
       // User is authenticated, proceed to looking-for page
       this.router.navigate(['/looking-for']);
     }
+  }
+
+  // Blog utility methods for homepage
+  getCategoryDisplayName(categoryId: string): string {
+    return this.blogService.getCategoryDisplayName(categoryId);
+  }
+
+  formatBlogDate(date: Date | string): string {
+    return this.blogService.formatPublishDate(date);
+  }
+
+  formatReadingTime(minutes: number): string {
+    return this.blogService.formatReadingTime(minutes);
   }
 }

@@ -45,6 +45,17 @@ import { BlogService, BlogPost, BlogCategory } from '../services/blog.service';
       </div>
 
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Top Banner Ad -->
+        <div class="mb-8 text-center">
+          <p class="text-xs text-gray-500 mb-2">Advertisement</p>
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-1039076031231406"
+               data-ad-slot="4567890123"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+        </div>
+
         <!-- Categories Filter -->
         <div class="mb-8">
           <div class="flex flex-wrap gap-3">
@@ -276,17 +287,34 @@ export class BlogComponent implements OnInit, OnDestroy {
     this.metaService.updateTag({ property: 'og:type', content: 'website' });
     this.metaService.updateTag({ name: 'robots', content: 'index, follow' });
 
-    // Structured data for SEO
+    // Enhanced structured data for blog listing page
     const structuredData = {
       "@context": "https://schema.org",
       "@type": "Blog",
       "name": "Tennis Marketplace Blog",
       "description": this.pageDescription,
-      "url": "https://tennis-marketplace.com/blog",
-      "author": {
+      "url": "https://tennis-marketplace.netlify.app/blog",
+      "publisher": {
         "@type": "Organization",
-        "name": "Tennis Marketplace"
-      }
+        "name": "Tennis Marketplace Philippines",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://tennis-marketplace.netlify.app/assets/logo.png"
+        }
+      },
+      "inLanguage": "en-PH",
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Tennis Players",
+        "geographicArea": "Philippines"
+      },
+      "about": [
+        "Tennis Equipment Reviews",
+        "Tennis Playing Tips",
+        "Tennis Gear Guides",
+        "Philippines Tennis"
+      ],
+      "keywords": "tennis blog, tennis equipment reviews, tennis tips Philippines, tennis gear guide"
     };
 
     const script = document.createElement('script');

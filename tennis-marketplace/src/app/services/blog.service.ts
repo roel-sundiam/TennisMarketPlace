@@ -19,6 +19,8 @@ export interface BlogPost {
   author: string;
   featured: boolean;
   url: string;
+  featuredImage?: string;
+  updatedAt?: Date;
 }
 
 export interface BlogCategory {
@@ -131,7 +133,9 @@ export class BlogService {
       publishedAt: item.publishedAt,
       author: item.author,
       featured: item.featured,
-      url: `/blog/${item.category}/${item.slug}`
+      url: `/blog/${item.category}/${item.slug}`,
+      featuredImage: item.featuredImage,
+      updatedAt: item.updatedAt
     };
   }
 
