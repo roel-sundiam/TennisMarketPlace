@@ -88,8 +88,8 @@ declare let gtag: Function;
 
         <!-- Article Content -->
         <main class="bg-white px-4 sm:px-6 lg:px-8 py-8">
-          <!-- Top of Content Ad (High Performance) -->
-          <div class="mb-8 text-center">
+          <!-- Top of Content Ad (Only show with content) -->
+          <div *ngIf="post.content && post.content.length > 500" class="mb-8 text-center">
             <ins class="adsbygoogle"
                  style="display:block"
                  data-ad-client="ca-pub-1039076031231406"
@@ -221,8 +221,8 @@ declare let gtag: Function;
           </div>
         </section>
 
-        <!-- Bottom Content Ad -->
-        <section class="bg-white px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Bottom Content Ad - Only show with substantial content -->
+        <section *ngIf="post.content && post.content.length > 1000" class="bg-white px-4 sm:px-6 lg:px-8 py-8">
           <div class="max-w-3xl mx-auto text-center">
             <p class="text-xs text-gray-500 mb-2">Advertisement</p>
             <ins class="adsbygoogle"
@@ -617,14 +617,18 @@ export class BlogPostComponent implements OnInit, OnDestroy {
   // AdSense optimization methods
   getContentWithMidAds(): string {
     if (!this.post?.content) return '';
-    
+
     const content = this.post.content;
     const paragraphs = content.split('</p>');
-    
-    // Insert ad after every 3-4 paragraphs in long articles
-    if (paragraphs.length > 6) {
+
+    // Only insert mid-content ads if:
+    // 1. Content is substantial (>1500 chars)
+    // 2. Has enough paragraphs (>8)
+    // 3. Content has meaningful text (not just HTML tags)
+    const textContent = content.replace(/<[^>]*>/g, '').trim();
+    if (paragraphs.length > 8 && content.length > 1500 && textContent.length > 1000) {
       const midPoint = Math.floor(paragraphs.length / 2);
-      
+
       const adHtml = `
         <div class="my-8 text-center">
           <p class="text-xs text-gray-500 mb-2">Advertisement</p>
@@ -636,10 +640,10 @@ export class BlogPostComponent implements OnInit, OnDestroy {
                data-full-width-responsive="true"></ins>
         </div>
       `;
-      
+
       paragraphs.splice(midPoint, 0, adHtml);
     }
-    
+
     return paragraphs.join('</p>');
   }
 

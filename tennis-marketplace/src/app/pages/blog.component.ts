@@ -45,8 +45,8 @@ import { BlogService, BlogPost, BlogCategory } from '../services/blog.service';
       </div>
 
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Top Banner Ad -->
-        <div class="mb-8 text-center">
+        <!-- Top Banner Ad - Only show when there is content -->
+        <div *ngIf="posts.length > 0 || featuredPosts.length > 0" class="mb-8 text-center">
           <p class="text-xs text-gray-500 mb-2">Advertisement</p>
           <ins class="adsbygoogle"
                style="display:block"
