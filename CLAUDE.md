@@ -211,3 +211,4 @@ Claude Code handles all git operations for this repository:
 - **Trigger phrase**: When you say **"go git"**, I will automatically handle all git operations (add, commit, push)
 - Simply ask to "commit changes" or "push updates" and I'll take care of the git workflow
 - Commit messages follow project conventions with descriptive summaries
+- memorize
